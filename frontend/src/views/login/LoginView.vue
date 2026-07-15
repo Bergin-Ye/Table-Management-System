@@ -2,8 +2,8 @@
   <div class="login-page">
     <div class="login-card">
       <div class="login-header">
-        <h1 class="login-logo">金属厂数据管理系统</h1>
-        <p class="login-desc">Metal Factory Data Management System</p>
+        <h1 class="login-logo">数据管理系统</h1>
+        <p class="login-desc">Data Management System</p>
       </div>
       <el-tabs v-model="activeTab" class="login-tabs" :stretch="true">
         <el-tab-pane label="登录" name="login">

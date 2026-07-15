@@ -41,17 +41,6 @@
       @export="handleExport"
       @template="handleTemplateDownload"
     >
-      <el-upload
-        ref="importUploadRef"
-        :auto-upload="false"
-        :show-file-list="false"
-        accept=".xlsx,.xls"
-        :on-change="handleImportFile"
-      >
-        <template #trigger>
-          <span style="display:none"></span>
-        </template>
-      </el-upload>
     </ToolBar>
 
     <!-- 数据表格 -->
@@ -275,8 +264,8 @@ function doFetch() {
     category: searchForm.category,
     productAttr: searchForm.productAttr,
     factory: searchForm.factory,
-    startDate: dateRange.value?.[0] || '',
-    endDate: dateRange.value?.[1] || '',
+    startDate: dateRange.value?.[0] || undefined,
+    endDate: dateRange.value?.[1] || undefined,
     companyId: companyStore.currentCompanyId,
     sortField: sortField.value,
     sortOrder: sortOrder.value
@@ -400,8 +389,8 @@ async function handleExport() {
       category: searchForm.category,
       productAttr: searchForm.productAttr,
       factory: searchForm.factory,
-      startDate: dateRange.value?.[0] || '',
-      endDate: dateRange.value?.[1] || '',
+      startDate: dateRange.value?.[0] || undefined,
+      endDate: dateRange.value?.[1] || undefined,
       companyId: companyStore.currentCompanyId
     })
     downloadBlob(response.data, '送货记录.xlsx')

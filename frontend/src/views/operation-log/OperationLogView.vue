@@ -67,8 +67,8 @@ const sortOrder = ref('desc')
 function doFetch() {
   return fetchData({
     ...searchForm,
-    startDate: dateRange.value?.[0] || '',
-    endDate: dateRange.value?.[1] || '',
+    startDate: dateRange.value?.[0] || undefined,
+    endDate: dateRange.value?.[1] || undefined,
     sortField: sortField.value,
     sortOrder: sortOrder.value
   })
