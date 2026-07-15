@@ -1,0 +1,256 @@
+package com.metal.service;
+
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.context.AnalysisContext;
+import com.alibaba.excel.event.AnalysisEventListener;
+import com.alibaba.excel.write.style.column.LongestMatchColumnWidthStyleStrategy;
+import com.github.pagehelper.PageHelper;
+import com.github.pagehelper.PageInfo;
+import com.metal.common.BizException;
+import com.metal.common.PageResult;
+import com.metal.common.ServiceHelper;
+import com.metal.dto.ImportResultDTO;
+import com.metal.entity.DeliveryRecord;
+import com.metal.entity.OperationLog;
+import com.metal.interceptor.AuthInterceptor;
+import com.metal.mapper.DeliveryRecordMapper;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
+@Service
+public class DeliveryRecordService {
+
+    @Autowired
+    private DeliveryRecordMapper mapper;
+
+    @Autowired
+    private OperationLogService logService;
+
+    private static final DateTimeFormatter YM_FMT = DateTimeFormatter.ofPattern("'FY'yyMM");
+
+    public PageResult<DeliveryRecord> query(int page, int pageSize, Long companyId, String keyword,
+                                             String category, String productAttr,
+                                             String factory, String startDate, String endDate,
+                                             String sortField, String sortOrder) {
+        // 安全过滤排序字段，防止 SQL 注入
+        sortField = ServiceHelper.sanitizeSortField(sortField, "id");
+        sortOrder = ServiceHelper.sanitizeSortOrder(sortOrder);
+
+        PageHelper.startPage(page, pageSize);
+        List<DeliveryRecord> list = mapper.search(companyId, keyword, category, productAttr, factory,
+                startDate, endDate, sortField, sortOrder);
+        PageInfo<DeliveryRecord> pageInfo = new PageInfo<>(list);
+        return new PageResult<>(pageInfo.getTotal(), page, pageSize, list);
+    }
+
+    public DeliveryRecord getById(Long id) {
+        DeliveryRecord record = mapper.findById(id);
+        if (record == null) throw new BizException("记录不存在");
+        return record;
+    }
+
+    @Transactional
+    public DeliveryRecord create(DeliveryRecord record) {
+        applyYearMonth(record);
+        String user = ServiceHelper.getCurrentUserName();
+        record.setCreatedBy(user);
+        record.setUpdatedBy(user);
+        mapper.insert(record);
+        log(record.getId(), "INSERT", record);
+        return record;
+    }
+
+    @Transactional
+    public DeliveryRecord update(DeliveryRecord record) {
+        DeliveryRecord exist = getById(record.getId());
+        applyYearMonth(record);
+        record.setUpdatedBy(ServiceHelper.getCurrentUserName());
+        mapper.update(record);
+        log(record.getId(), "UPDATE", record);
+        return record;
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        getById(id);
+        mapper.deleteById(id);
+        log(id, "DELETE", null);
+    }
+
+    @Transactional
+    public void batchDelete(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) throw new BizException("请选择要删除的记录");
+        mapper.batchDelete(ids);
+        for (Long id : ids) log(id, "DELETE", null);
+    }
+
+    public DeliveryRecord copy(Long id) {
+        return getById(id);
+    }
+
+    // =============== Excel 导入 ===============
+    private static final int IMPORT_BATCH_SIZE = 500; // 每批 500 条，平衡内存与数据库往返
+
+    /**
+     * 批量导入 Excel 数据
+     * 采用分批 INSERT + 事务保护：每 500 条一批，中途失败自动回滚整批
+     */
+    @Transactional
+    public ImportResultDTO importExcel(MultipartFile file) {
+        List<ImportResultDTO.FailDetail> failDetails = new ArrayList<>();
+        List<DeliveryRecord> batch = new ArrayList<>(IMPORT_BATCH_SIZE);
+        int[] counts = {0, 0, 0}; // total, success, fail
+
+        try (InputStream is = file.getInputStream()) {
+            EasyExcel.read(is, DeliveryRecord.class, new AnalysisEventListener<DeliveryRecord>() {
+                @Override
+                public void invoke(DeliveryRecord data, AnalysisContext ctx) {
+                    counts[0]++;
+                    try {
+                        if (data.getMaterialCode() == null || data.getMaterialCode().isBlank()) {
+                            failDetails.add(new ImportResultDTO.FailDetail(counts[0], "物料编码不能为空"));
+                            counts[2]++;
+                            return;
+                        }
+                        applyYearMonth(data);
+                        String user = ServiceHelper.getCurrentUserName();
+                        data.setCreatedBy(user);
+                        data.setUpdatedBy(user);
+                        batch.add(data);
+
+                        // 攒够一批就写入数据库
+                        if (batch.size() >= IMPORT_BATCH_SIZE) {
+                            flushBatch(batch, counts);
+                        }
+                    } catch (Exception e) {
+                        failDetails.add(new ImportResultDTO.FailDetail(counts[0], e.getMessage()));
+                        counts[2]++;
+                    }
+                }
+                @Override
+                public void doAfterAllAnalysed(AnalysisContext ctx) {
+                    // 最后一批不足 500 条的剩余数据
+                    if (!batch.isEmpty()) {
+                        flushBatch(batch, counts);
+                    }
+                }
+            }).sheet().doRead();
+        } catch (IOException e) {
+            throw new BizException("文件读取失败: " + e.getMessage());
+        }
+
+        ImportResultDTO result = new ImportResultDTO();
+        result.setTotal(counts[0]);
+        result.setSuccess(counts[1]);
+        result.setFail(counts[2]);
+        result.setFailDetails(failDetails);
+        return result;
+    }
+
+    /** 将缓冲区数据批量写入数据库 */
+    private void flushBatch(List<DeliveryRecord> batch, int[] counts) {
+        mapper.batchInsert(batch);
+        counts[1] += batch.size();
+        for (DeliveryRecord r : batch) {
+            log(r.getId(), "INSERT", r);
+        }
+        batch.clear();
+    }
+
+    // =============== Excel 导出 ===============
+    public void exportExcel(HttpServletResponse response, Long companyId, String keyword, String category,
+                            String productAttr, String factory, String startDate, String endDate) {
+        try {
+            // 不分页，全量查询
+            PageHelper.startPage(1, 0); // 0 disables paging
+            List<DeliveryRecord> list = mapper.search(companyId, keyword, category, productAttr, factory,
+                    startDate, endDate, "id", "desc");
+
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setCharacterEncoding("UTF-8");
+            String fileName = URLEncoder.encode("送货记录导出.xlsx", StandardCharsets.UTF_8);
+            response.setHeader("Content-Disposition", "attachment;filename=" + fileName);
+
+            OutputStream os = response.getOutputStream();
+            EasyExcel.write(os, DeliveryRecord.class)
+                    .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
+                    .sheet("送货记录")
+                    .doWrite(list);
+            os.flush();
+        } catch (IOException e) {
+            throw new BizException("导出失败: " + e.getMessage());
+        }
+    }
+
+    // =============== 模板下载 ===============
+    public void downloadTemplate(HttpServletResponse response) {
+        try {
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setCharacterEncoding("UTF-8");
+            String fileName = URLEncoder.encode("送货记录导入模板.xlsx", StandardCharsets.UTF_8);
+            response.setHeader("Content-Disposition", "attachment;filename=" + fileName);
+
+            // 创建一个只有表头的空模板
+            DeliveryRecord template = new DeliveryRecord();
+            template.setRecordDate(LocalDate.now());
+            template.setCategory("示例类别");
+            template.setMaterialName("示例物料");
+            template.setSpecModel("示例规格");
+            template.setMaterialCode("示例编码");
+            template.setMaterialSerial("示例序列号");
+            template.setQuantity(1);
+            template.setUnit("个");
+            template.setBrand("示例品牌");
+            template.setProductAttr("新品");
+            template.setFactory("示例厂房");
+            template.setShipmentNo("示例单号");
+
+            List<DeliveryRecord> list = List.of(template);
+            OutputStream os = response.getOutputStream();
+            EasyExcel.write(os, DeliveryRecord.class)
+                    .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
+                    .sheet("送货记录")
+                    .doWrite(list);
+            os.flush();
+        } catch (IOException e) {
+            throw new BizException("模板下载失败: " + e.getMessage());
+        }
+    }
+
+    // =============== 辅助方法 ===============
+    private void applyYearMonth(DeliveryRecord record) {
+        if (record.getRecordDate() != null) {
+            record.setYearMonth(record.getRecordDate().format(YM_FMT));
+        }
+    }
+
+    private void log(Long recordId, String action, DeliveryRecord data) {
+        OperationLog log = new OperationLog();
+        var ctx = AuthInterceptor.getCurrentUser();
+        if (ctx != null) {
+            log.setUserId(ctx.getUserId());
+            log.setUsername(ctx.getUsername());
+        }
+        log.setAction(action);
+        log.setTableName("delivery_record");
+        log.setRecordId(recordId);
+        if (data != null && !"DELETE".equals(action)) {
+            log.setDetail(data.toString());
+        }
+        logService.save(log);
+    }
+}

@@ -1,0 +1,331 @@
+<template>
+  <div class="page-content">
+    <PageHeader title="原始记录" />
+
+    <SearchForm :form="searchForm" @search="handleSearch" @reset="handleReset">
+      <el-form-item label="关键词">
+        <el-input v-model="searchForm.keyword" placeholder="搜索" clearable style="width: 180px" />
+      </el-form-item>
+      <el-form-item label="班次">
+        <el-select v-model="searchForm.shift" placeholder="全部" clearable style="width: 100px">
+          <el-option label="白班" value="白班" />
+          <el-option label="夜班" value="夜班" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="厂房">
+        <el-input v-model="searchForm.factory" placeholder="厂房" clearable style="width: 120px" />
+      </el-form-item>
+      <el-form-item label="是否过保">
+        <el-select v-model="searchForm.isOutOfWarranty" placeholder="全部" clearable style="width: 110px">
+          <el-option label="未过保" value="未过保" />
+          <el-option label="已过保" value="已过保" />
+          <el-option label="无" value="无" />
+        </el-select>
+      </el-form-item>
+      <el-form-item label="日期范围">
+        <el-date-picker v-model="dateRange" type="daterange" range-separator="至" start-placeholder="开始" end-placeholder="结束" value-format="YYYY-MM-DD" style="width: 240px" />
+      </el-form-item>
+    </SearchForm>
+
+    <ToolBar :selected-count="selectedRows.length" @add="handleAdd" @batch-delete="batchDelete">
+      <el-button plain @click="handleExport">导出</el-button>
+    </ToolBar>
+
+    <el-table :data="list" v-loading="loading" border stripe @selection-change="handleSelectionChange" @sort-change="handleSortChange">
+      <el-table-column type="selection" width="44" fixed="left" />
+      <el-table-column prop="id" label="ID" width="60" sortable="custom" />
+      <el-table-column prop="recordDate" label="日期" width="100" sortable="custom" />
+      <el-table-column prop="yearMonth" label="年月" width="80" />
+      <el-table-column prop="shift" label="班次" width="70" />
+      <el-table-column prop="factory" label="厂房" width="80" />
+      <el-table-column prop="serialNumber" label="序列号" width="80" />
+      <el-table-column prop="machineNo" label="机台号" width="90" />
+      <el-table-column prop="diagnostician" label="诊断人" width="80" />
+      <el-table-column prop="repairPerson" label="维修人" width="80" />
+      <el-table-column prop="machineModel" label="机型" width="100" />
+      <el-table-column prop="faultPhenomenon" label="故障现象" width="120" show-overflow-tooltip />
+      <el-table-column prop="materialCode" label="料号" width="110" sortable="custom" />
+      <el-table-column prop="partName" label="配件名称" width="110" />
+      <el-table-column prop="quantity" label="数量" width="60" />
+      <el-table-column prop="repairHours" label="维修工时" width="90" />
+      <el-table-column prop="downtimeHours" label="停机工时" width="90" />
+      <el-table-column prop="machineOnMaterial" label="上机物料" width="110" show-overflow-tooltip />
+      <el-table-column prop="machineOffMaterial" label="下机物料" width="110" show-overflow-tooltip />
+      <el-table-column prop="isOutOfWarranty" label="是否过保" width="90">
+        <template #default="{ row }">
+          <el-tag :type="warrantyTagType(row.isOutOfWarranty)" size="small">{{ row.isOutOfWarranty }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="confirmer" label="确认人" width="80" />
+      <el-table-column prop="createdBy" label="创建人" width="80" />
+      <el-table-column label="操作" width="170" fixed="right">
+        <template #default="{ row }">
+          <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button link type="primary" size="small" @click="handleCopy(row)">复制</el-button>
+          <el-button link type="danger" size="small" @click="handleDelete(row.id)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <div class="pagination-wrap">
+      <el-pagination v-model:current-page="queryParams.page" v-model:page-size="queryParams.pageSize" :page-sizes="[20, 50, 100]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange" @current-change="handlePageChange" />
+    </div>
+
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑原始记录' : (isCopy ? '复制原始记录' : '新增原始记录')" width="900px" :close-on-click-modal="false" destroy-on-close>
+      <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
+        <el-row :gutter="16">
+          <el-col :span="8">
+            <el-form-item label="日期" prop="recordDate">
+              <el-date-picker v-model="form.recordDate" type="date" value-format="YYYY-MM-DD" style="width:100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="班次" prop="shift">
+              <el-select v-model="form.shift" style="width:100%"><el-option label="白班" value="白班" /><el-option label="夜班" value="夜班" /></el-select>
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="厂房" prop="factory">
+              <el-input v-model="form.factory" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="8">
+            <el-form-item label="序列号" prop="serialNumber">
+              <el-input v-model="form.serialNumber" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="机台号" prop="machineNo">
+              <el-input v-model="form.machineNo" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="机型" prop="machineModel">
+              <el-input v-model="form.machineModel" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="8">
+            <el-form-item label="诊断人" prop="diagnostician">
+              <el-input v-model="form.diagnostician" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="维修人" prop="repairPerson">
+              <el-input v-model="form.repairPerson" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="确认人" prop="confirmer">
+              <el-input v-model="form.confirmer" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="8">
+            <el-form-item label="报修时间" prop="repairRequestTime">
+              <el-date-picker v-model="form.repairRequestTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="开始时间" prop="startTime">
+              <el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="结束时间" prop="endTime">
+              <el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="故障现象" prop="faultPhenomenon">
+              <el-input v-model="form.faultPhenomenon" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="故障描述" prop="faultDescription">
+              <el-input v-model="form.faultDescription" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="料号" prop="materialCode">
+              <el-autocomplete v-model="form.materialCode" :fetch-suggestions="searchMaterials" placeholder="输入料号关键字自动匹配" style="width:100%" @select="handleMaterialSelect" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="配件名称" prop="partName">
+              <el-input v-model="form.partName" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="6">
+            <el-form-item label="数量" prop="quantity">
+              <el-input-number v-model="form.quantity" :min="0" style="width:100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="9">
+            <el-form-item label="上机物料号" prop="machineOnMaterial">
+              <el-input v-model="form.machineOnMaterial" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="9">
+            <el-form-item label="下机物料号" prop="machineOffMaterial">
+              <el-input v-model="form.machineOffMaterial" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
+            <el-form-item label="送货记录引用" prop="deliveryRecordRef">
+              <el-input v-model="form.deliveryRecordRef" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="备注" prop="remark">
+              <el-input v-model="form.remark" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+      </el-form>
+      <template #footer>
+        <el-button @click="dialogVisible = false">取消</el-button>
+        <el-button type="primary" :loading="submitLoading" @click="handleSubmit">提交</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<script setup>
+import { ref, reactive, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import * as api from '../../api/original-record'
+import { search as searchMaterialsApi } from '../../api/material'
+import { useCompanyStore } from '../../stores/company'
+import { usePagination } from '../../composables/usePagination'
+import { useTableSelection } from '../../composables/useTableSelection'
+import { useCrud } from '../../composables/useCrud'
+import PageHeader from '../../components/PageHeader.vue'
+import SearchForm from '../../components/SearchForm.vue'
+import ToolBar from '../../components/ToolBar.vue'
+
+const companyStore = useCompanyStore()
+const { list, total, loading, queryParams, fetchData, handlePageChange, handleSizeChange } = usePagination(
+  (params) => api.getList({ ...params, companyId: companyStore.currentCompanyId })
+)
+const { selectedRows, handleSelectionChange } = useTableSelection()
+const { handleDelete, handleBatchDelete } = useCrud(api, doFetch)
+
+const searchForm = reactive({ keyword: '', shift: '', factory: '', isOutOfWarranty: '' })
+const dateRange = ref([])
+const dialogVisible = ref(false)
+const isEdit = ref(false)
+const isCopy = ref(false)
+const submitLoading = ref(false)
+const formRef = ref(null)
+const sortField = ref('id')
+const sortOrder = ref('desc')
+
+const defaultForm = {
+  id: null, recordDate: '', shift: '', factory: '', serialNumber: '', machineNo: '',
+  diagnostician: '', repairPerson: '', confirmer: '', repairRequestTime: '', startTime: '',
+  endTime: '', machineModel: '', faultPhenomenon: '', faultDescription: '',
+  materialCode: '', partName: '', quantity: null, machineOnMaterial: '', machineOffMaterial: '',
+  remark: '', deliveryRecordRef: ''
+}
+const form = reactive({ ...defaultForm })
+const rules = {
+  recordDate: [{ required: true, message: '请选择日期', trigger: 'change' }],
+  factory: [{ required: true, message: '请输入厂房', trigger: 'blur' }]
+}
+
+function doFetch() {
+  return fetchData({
+    ...searchForm,
+    startDate: dateRange.value?.[0] || '',
+    endDate: dateRange.value?.[1] || '',
+    companyId: companyStore.currentCompanyId,
+    sortField: sortField.value,
+    sortOrder: sortOrder.value
+  })
+}
+
+function handleSearch() { queryParams.page = 1; doFetch() }
+function handleReset() {
+  Object.assign(searchForm, { keyword: '', shift: '', factory: '', isOutOfWarranty: '' })
+  dateRange.value = []; queryParams.page = 1; doFetch()
+}
+
+function handleSortChange({ prop, order }) {
+  sortField.value = order ? prop : 'id'
+  sortOrder.value = order === 'ascending' ? 'asc' : 'desc'
+  queryParams.page = 1; doFetch()
+}
+
+function resetForm() { Object.assign(form, { ...defaultForm }) }
+function handleAdd() { isEdit.value = false; isCopy.value = false; resetForm(); dialogVisible.value = true }
+async function handleEdit(row) {
+  isEdit.value = true; isCopy.value = false
+  const res = await api.getDetail(row.id); Object.assign(form, res.data)
+  dialogVisible.value = true
+}
+async function handleCopy(row) {
+  isEdit.value = false; isCopy.value = true
+  const res = await api.getCopy(row.id); Object.assign(form, { ...res.data, id: null })
+  dialogVisible.value = true
+}
+
+async function handleSubmit() {
+  const valid = await formRef.value.validate().catch(() => false)
+  if (!valid) return
+  submitLoading.value = true
+  try {
+    const data = { ...form, companyId: companyStore.currentCompanyId }
+    delete data.id
+    if (isEdit.value) await api.update(form.id, data)
+    else await api.create(data)
+    ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
+    dialogVisible.value = false; doFetch()
+  } finally { submitLoading.value = false }
+}
+
+async function searchMaterials(query, cb) {
+  if (!query || query.length < 1) { cb([]); return }
+  try {
+    const res = await searchMaterialsApi(query)
+    const data = res.data || []
+    cb(data.map(m => ({ value: m.materialCode, label: `${m.materialCode} - ${m.materialName || ''}` })))
+  } catch { cb([]) }
+}
+
+function handleMaterialSelect(item) {
+  form.materialCode = item.value
+}
+
+function warrantyTagType(val) {
+  if (val === '未过保') return 'success'
+  if (val === '已过保') return 'danger'
+  return 'info'
+}
+
+function batchDelete() {
+  handleBatchDelete(selectedRows.value.map(r => r.id))
+}
+
+function handleExport() {
+  ElMessage.info('导出功能开发中')
+}
+
+onMounted(() => doFetch())
+</script>
+
+<style scoped>
+.pagination-wrap { display: flex; justify-content: flex-end; margin-top: 16px; }
+</style>

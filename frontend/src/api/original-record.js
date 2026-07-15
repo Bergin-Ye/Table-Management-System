@@ -1,0 +1,29 @@
+import request from './request'
+
+export function getList(params) {
+  return request.get('/original-record', { params })
+}
+
+export function getDetail(id) {
+  return request.get(`/original-record/${id}`)
+}
+
+export function getCopy(id) {
+  return request.get(`/original-record/copy/${id}`)
+}
+
+export function create(data) {
+  return request.post('/original-record', data)
+}
+
+export function update(id, data) {
+  return request.put(`/original-record/${id}`, data)
+}
+
+export function remove(id) {
+  return request.delete(`/original-record/${id}`)
+}
+
+export function batchDelete(ids) {
+  return request.post('/original-record/batch-delete', { ids })
+}

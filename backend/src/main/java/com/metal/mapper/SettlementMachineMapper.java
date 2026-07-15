@@ -1,0 +1,46 @@
+package com.metal.mapper;
+
+import com.metal.entity.SettlementMachine;
+import org.apache.ibatis.annotations.*;
+import java.util.List;
+
+@Mapper
+public interface SettlementMachineMapper {
+
+    @Select("SELECT * FROM settlement_machine WHERE id = #{id}")
+    SettlementMachine findById(Long id);
+
+    @Insert("INSERT INTO settlement_machine (company_id, material_code, category, part_name, unit_usage, ratio, " +
+            "unit_price_with_tax, warranty_period, price_type, remark, machine_model, settlement_machine_count) " +
+            "VALUES (#{companyId}, #{materialCode}, #{category}, #{partName}, #{unitUsage}, #{ratio}, " +
+            "#{unitPriceWithTax}, #{warrantyPeriod}, #{priceType}, #{remark}, #{machineModel}, #{settlementMachineCount})")
+    @Options(useGeneratedKeys = true, keyProperty = "id")
+    int insert(SettlementMachine record);
+
+    @Update("UPDATE settlement_machine SET material_code=#{materialCode}, category=#{category}, " +
+            "part_name=#{partName}, unit_usage=#{unitUsage}, ratio=#{ratio}, unit_price_with_tax=#{unitPriceWithTax}, " +
+            "warranty_period=#{warrantyPeriod}, price_type=#{priceType}, remark=#{remark}, " +
+            "machine_model=#{machineModel}, settlement_machine_count=#{settlementMachineCount} WHERE id=#{id}")
+    int update(SettlementMachine record);
+
+    @Delete("DELETE FROM settlement_machine WHERE id = #{id}")
+    int deleteById(Long id);
+
+    @Delete("<script>DELETE FROM settlement_machine WHERE id IN <foreach collection='ids' item='id' open='(' close=')' separator=','>#{id}</foreach></script>")
+    int batchDelete(@Param("ids") List<Long> ids);
+
+    @Select("<script>" +
+            "SELECT * FROM settlement_machine WHERE 1=1 " +
+            "<if test='companyId != null'>AND company_id = #{companyId}</if> " +
+            "<if test='keyword != null and keyword != \"\"'>" +
+            "AND (material_code LIKE CONCAT('%',#{keyword},'%') OR part_name LIKE CONCAT('%',#{keyword},'%') " +
+            "OR category LIKE CONCAT('%',#{keyword},'%') OR machine_model LIKE CONCAT('%',#{keyword},'%')) " +
+            "</if>" +
+            "<if test='machineModel != null and machineModel != \"\"'>AND machine_model = #{machineModel}</if> " +
+            "ORDER BY ${sortField} ${sortOrder} " +
+            "</script>")
+    List<SettlementMachine> search(@Param("companyId") Long companyId, @Param("keyword") String keyword,
+                                   @Param("machineModel") String machineModel,
+                                   @Param("sortField") String sortField,
+                                   @Param("sortOrder") String sortOrder);
+}
