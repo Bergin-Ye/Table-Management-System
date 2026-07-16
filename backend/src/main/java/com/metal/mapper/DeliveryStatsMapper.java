@@ -12,10 +12,10 @@ public interface DeliveryStatsMapper {
 
     @Insert("INSERT INTO delivery_stats (company_id, category, material_code, system_name, part_name, unit_usage, ratio, " +
             "unit_price_with_tax, machine_count, delivery_quantity, machine_on_quantity, month_repair, " +
-            "agreed_ratio_quantity, excess_quantity, excess_amount_with_tax, stat_date, `year_month`) " +
+            "agreed_ratio_quantity, excess_quantity, excess_amount_with_tax, stat_date, `year_month`, created_by, updated_by) " +
             "VALUES (#{companyId}, #{category}, #{materialCode}, #{systemName}, #{partName}, #{unitUsage}, #{ratio}, " +
             "#{unitPriceWithTax}, #{machineCount}, #{deliveryQuantity}, #{machineOnQuantity}, #{monthRepair}, " +
-            "#{agreedRatioQuantity}, #{excessQuantity}, #{excessAmountWithTax}, #{statDate}, #{yearMonth})")
+            "#{agreedRatioQuantity}, #{excessQuantity}, #{excessAmountWithTax}, #{statDate}, #{yearMonth}, #{createdBy}, #{updatedBy})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(DeliveryStats record);
 
@@ -25,7 +25,7 @@ public interface DeliveryStatsMapper {
             "delivery_quantity=#{deliveryQuantity}, machine_on_quantity=#{machineOnQuantity}, " +
             "month_repair=#{monthRepair}, agreed_ratio_quantity=#{agreedRatioQuantity}, " +
             "excess_quantity=#{excessQuantity}, excess_amount_with_tax=#{excessAmountWithTax}, " +
-            "stat_date=#{statDate}, `year_month`=#{yearMonth} WHERE id=#{id}")
+            "stat_date=#{statDate}, `year_month`=#{yearMonth}, updated_by=#{updatedBy} WHERE id=#{id}")
     int update(DeliveryStats record);
 
     @Delete("DELETE FROM delivery_stats WHERE id = #{id}")

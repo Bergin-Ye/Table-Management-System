@@ -27,11 +27,12 @@ public class JwtUtil {
         this.expirationMs = expirationMs;
     }
 
-    public String generateToken(Long userId, String username, String realName) {
+    public String generateToken(Long userId, String username, String realName, String role) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("userId", userId);
         claims.put("username", username);
         claims.put("realName", realName);
+        claims.put("role", role);
 
         return Jwts.builder()
                 .claims(claims)

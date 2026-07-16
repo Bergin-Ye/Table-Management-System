@@ -8,6 +8,7 @@ import com.metal.service.AuthService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -31,6 +32,11 @@ public class AuthController {
     @GetMapping("/me")
     public Result<?> me() {
         AuthInterceptor.UserContext ctx = AuthInterceptor.getCurrentUser();
-        return Result.ok(ctx);
+        Map<String, Object> result = new HashMap<>();
+        result.put("userId", ctx.getUserId());
+        result.put("username", ctx.getUsername());
+        result.put("realName", ctx.getRealName());
+        result.put("role", ctx.getRole());
+        return Result.ok(result);
     }
 }

@@ -13,13 +13,13 @@ public interface MachineCountMapper {
     @Select("SELECT * FROM machine_count ORDER BY id")
     List<MachineCount> findAll();
 
-    @Insert("INSERT INTO machine_count (company_id, machine_model, count, ratio_pct, stat_month, remark) " +
-            "VALUES (#{companyId}, #{machineModel}, #{count}, #{ratioPct}, #{statMonth}, #{remark})")
+    @Insert("INSERT INTO machine_count (company_id, machine_model, count, ratio_pct, stat_month, remark, created_by, updated_by) " +
+            "VALUES (#{companyId}, #{machineModel}, #{count}, #{ratioPct}, #{statMonth}, #{remark}, #{createdBy}, #{updatedBy})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(MachineCount record);
 
     @Update("UPDATE machine_count SET machine_model=#{machineModel}, count=#{count}, " +
-            "ratio_pct=#{ratioPct}, stat_month=#{statMonth}, remark=#{remark} WHERE id=#{id}")
+            "ratio_pct=#{ratioPct}, stat_month=#{statMonth}, remark=#{remark}, updated_by=#{updatedBy} WHERE id=#{id}")
     int update(MachineCount record);
 
     @Delete("DELETE FROM machine_count WHERE id = #{id}")

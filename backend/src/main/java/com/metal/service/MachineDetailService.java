@@ -51,26 +51,38 @@ public class MachineDetailService {
 
     @Transactional
     public MachineDetail create(MachineDetail record) {
+        String user = ServiceHelper.getCurrentUserName();
+        record.setCreatedBy(user);
+        record.setUpdatedBy(user);
         mapper.insert(record);
         return record;
     }
 
     @Transactional
     public MachineDetail update(MachineDetail record) {
-        getById(record.getId());
+        MachineDetail exist = getById(record.getId());
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "编辑");
+        record.setUpdatedBy(ServiceHelper.getCurrentUserName());
         mapper.update(record);
         return record;
     }
 
     @Transactional
     public void delete(Long id) {
-        getById(id);
+        MachineDetail exist = getById(id);
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
         mapper.deleteById(id);
     }
 
     @Transactional
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) throw new BizException("请选择要删除的记录");
+        if (!ServiceHelper.isAdmin()) {
+            for (Long id : ids) {
+                MachineDetail exist = getById(id);
+                ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
+            }
+        }
         mapper.batchDelete(ids);
     }
 

@@ -85,13 +85,17 @@
             <el-icon><Box /></el-icon>
             <template #title>物料表</template>
           </el-menu-item>
-          <el-menu-item index="/operation-log">
+          <el-menu-item index="/operation-log" v-if="authStore.isAdmin">
             <el-icon><List /></el-icon>
             <template #title>操作日志</template>
           </el-menu-item>
-          <el-menu-item index="/company">
+          <el-menu-item index="/company" v-if="authStore.isAdmin">
             <el-icon><OfficeBuilding /></el-icon>
             <template #title>公司管理</template>
+          </el-menu-item>
+          <el-menu-item index="/user-management" v-if="authStore.isAdmin">
+            <el-icon><User /></el-icon>
+            <template #title>用户管理</template>
           </el-menu-item>
         </el-menu>
       </el-aside>
@@ -114,7 +118,7 @@ import { ElMessage } from 'element-plus'
 import {
   UserFilled, ArrowDown, Expand, Fold, Clock,
   Document, Notebook, Setting, DataAnalysis, Coin,
-  Monitor, TrendCharts, Box, List, OfficeBuilding
+  Monitor, TrendCharts, Box, List, OfficeBuilding, User
 } from '@element-plus/icons-vue'
 import { useAuthStore } from '../stores/auth'
 import { useCompanyStore } from '../stores/company'

@@ -7,6 +7,8 @@ export const useAuthStore = defineStore('auth', () => {
   const user = ref(JSON.parse(localStorage.getItem('user') || 'null'))
 
   const isLoggedIn = computed(() => !!token.value)
+  const role = computed(() => user.value?.role || 'user')
+  const isAdmin = computed(() => role.value === 'admin')
 
   async function login(credentials) {
     const res = await loginApi(credentials)
@@ -43,6 +45,8 @@ export const useAuthStore = defineStore('auth', () => {
     token,
     user,
     isLoggedIn,
+    role,
+    isAdmin,
     login,
     register,
     fetchMe,

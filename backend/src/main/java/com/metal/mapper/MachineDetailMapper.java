@@ -13,11 +13,11 @@ public interface MachineDetailMapper {
     @Select("SELECT * FROM machine_detail ORDER BY id")
     List<MachineDetail> findAll();
 
-    @Insert("INSERT INTO machine_detail (company_id, factory, machine_no, machine_brand) VALUES (#{companyId}, #{factory}, #{machineNo}, #{machineBrand})")
+    @Insert("INSERT INTO machine_detail (company_id, factory, machine_no, machine_brand, created_by, updated_by) VALUES (#{companyId}, #{factory}, #{machineNo}, #{machineBrand}, #{createdBy}, #{updatedBy})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(MachineDetail record);
 
-    @Update("UPDATE machine_detail SET factory=#{factory}, machine_no=#{machineNo}, machine_brand=#{machineBrand} WHERE id=#{id}")
+    @Update("UPDATE machine_detail SET factory=#{factory}, machine_no=#{machineNo}, machine_brand=#{machineBrand}, updated_by=#{updatedBy} WHERE id=#{id}")
     int update(MachineDetail record);
 
     @Delete("DELETE FROM machine_detail WHERE id = #{id}")

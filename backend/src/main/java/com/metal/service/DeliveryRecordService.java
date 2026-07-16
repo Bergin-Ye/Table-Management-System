@@ -81,6 +81,7 @@ public class DeliveryRecordService {
     @Transactional
     public DeliveryRecord update(DeliveryRecord record) {
         DeliveryRecord exist = getById(record.getId());
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "编辑");
         applyYearMonth(record);
         record.setUpdatedBy(ServiceHelper.getCurrentUserName());
         mapper.update(record);
@@ -90,7 +91,8 @@ public class DeliveryRecordService {
 
     @Transactional
     public void delete(Long id) {
-        getById(id);
+        DeliveryRecord exist = getById(id);
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
         mapper.deleteById(id);
         log(id, "DELETE", null);
     }
@@ -98,6 +100,12 @@ public class DeliveryRecordService {
     @Transactional
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) throw new BizException("请选择要删除的记录");
+        if (!ServiceHelper.isAdmin()) {
+            for (Long id : ids) {
+                DeliveryRecord exist = getById(id);
+                ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
+            }
+        }
         mapper.batchDelete(ids);
         for (Long id : ids) log(id, "DELETE", null);
     }

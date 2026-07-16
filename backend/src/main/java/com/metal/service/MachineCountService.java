@@ -50,26 +50,38 @@ public class MachineCountService {
 
     @Transactional
     public MachineCount create(MachineCount record) {
+        String user = ServiceHelper.getCurrentUserName();
+        record.setCreatedBy(user);
+        record.setUpdatedBy(user);
         mapper.insert(record);
         return record;
     }
 
     @Transactional
     public MachineCount update(MachineCount record) {
-        getById(record.getId());
+        MachineCount exist = getById(record.getId());
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "编辑");
+        record.setUpdatedBy(ServiceHelper.getCurrentUserName());
         mapper.update(record);
         return record;
     }
 
     @Transactional
     public void delete(Long id) {
-        getById(id);
+        MachineCount exist = getById(id);
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
         mapper.deleteById(id);
     }
 
     @Transactional
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) throw new BizException("请选择要删除的记录");
+        if (!ServiceHelper.isAdmin()) {
+            for (Long id : ids) {
+                MachineCount exist = getById(id);
+                ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
+            }
+        }
         mapper.batchDelete(ids);
     }
 

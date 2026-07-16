@@ -19,7 +19,7 @@ public interface MaterialMapper {
     int insert(Material material);
 
     @Update("UPDATE material SET category=#{category}, material_name=#{materialName}, " +
-            "spec_model=#{specModel}, material_code=#{materialCode} WHERE id=#{id}")
+            "spec_model=#{specModel}, material_code=#{materialCode}, updated_by=#{updatedBy} WHERE id=#{id}")
     int update(Material material);
 
     @Delete("DELETE FROM material WHERE id = #{id}")

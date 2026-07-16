@@ -50,26 +50,38 @@ public class SettlementMachineService {
 
     @Transactional
     public SettlementMachine create(SettlementMachine record) {
+        String user = ServiceHelper.getCurrentUserName();
+        record.setCreatedBy(user);
+        record.setUpdatedBy(user);
         mapper.insert(record);
         return record;
     }
 
     @Transactional
     public SettlementMachine update(SettlementMachine record) {
-        getById(record.getId());
+        SettlementMachine exist = getById(record.getId());
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "编辑");
+        record.setUpdatedBy(ServiceHelper.getCurrentUserName());
         mapper.update(record);
         return record;
     }
 
     @Transactional
     public void delete(Long id) {
-        getById(id);
+        SettlementMachine exist = getById(id);
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
         mapper.deleteById(id);
     }
 
     @Transactional
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) throw new BizException("请选择要删除的记录");
+        if (!ServiceHelper.isAdmin()) {
+            for (Long id : ids) {
+                SettlementMachine exist = getById(id);
+                ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
+            }
+        }
         mapper.batchDelete(ids);
     }
 
@@ -88,7 +100,10 @@ public class SettlementMachineService {
                 public void invoke(SettlementMachine data, AnalysisContext ctx) {
                     counts[0]++;
                     try {
+                        String user = ServiceHelper.getCurrentUserName();
                         data.setCompanyId(companyId != null ? companyId : 1L);
+                        data.setCreatedBy(user);
+                        data.setUpdatedBy(user);
                         batch.add(data);
                         if (batch.size() >= IMPORT_BATCH_SIZE) {
                             flushBatch(batch, counts);

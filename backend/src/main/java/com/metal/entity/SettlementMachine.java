@@ -38,4 +38,8 @@ public class SettlementMachine {
     private LocalDateTime createdAt;
     @ExcelIgnore
     private LocalDateTime updatedAt;
+    @ExcelIgnore
+    private String createdBy;
+    @ExcelIgnore
+    private String updatedBy;
 }

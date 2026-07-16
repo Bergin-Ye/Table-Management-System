@@ -15,5 +15,6 @@ public class LoginResultDTO {
         private Long id;
         private String username;
         private String realName;
+        private String role;
     }
 }

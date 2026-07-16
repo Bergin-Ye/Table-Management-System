@@ -64,6 +64,9 @@ public class DeliveryStatsService {
     @Transactional
     public DeliveryStats create(DeliveryStats record, List<DeliveryStatsDaily> dailies) {
         applyCalculations(record);
+        String user = ServiceHelper.getCurrentUserName();
+        record.setCreatedBy(user);
+        record.setUpdatedBy(user);
         mapper.insert(record);
         if (dailies != null && !dailies.isEmpty()) {
             for (DeliveryStatsDaily d : dailies) {
@@ -76,8 +79,10 @@ public class DeliveryStatsService {
 
     @Transactional
     public DeliveryStats update(DeliveryStats record, List<DeliveryStatsDaily> dailies) {
-        getById(record.getId());
+        DeliveryStats exist = getById(record.getId());
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "编辑");
         applyCalculations(record);
+        record.setUpdatedBy(ServiceHelper.getCurrentUserName());
         mapper.update(record);
         // 先删后插每日明细
         dailyMapper.deleteByStatId(record.getId());
@@ -92,7 +97,8 @@ public class DeliveryStatsService {
 
     @Transactional
     public void delete(Long id) {
-        getById(id);
+        DeliveryStats exist = getById(id);
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
         dailyMapper.deleteByStatId(id);
         mapper.deleteById(id);
     }
@@ -100,6 +106,12 @@ public class DeliveryStatsService {
     @Transactional
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) throw new BizException("请选择要删除的记录");
+        if (!ServiceHelper.isAdmin()) {
+            for (Long id : ids) {
+                DeliveryStats exist = getById(id);
+                ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
+            }
+        }
         for (Long id : ids) {
             dailyMapper.deleteByStatId(id);
         }

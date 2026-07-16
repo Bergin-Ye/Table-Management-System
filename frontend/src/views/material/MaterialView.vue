@@ -17,6 +17,7 @@
       <el-table-column prop="materialName" label="物料名称" width="140" show-overflow-tooltip />
       <el-table-column prop="specModel" label="规格型号" width="160" show-overflow-tooltip />
       <el-table-column prop="materialCode" label="物料编码" width="130" sortable="custom" />
+      <el-table-column prop="createdBy" label="创建人" width="100" />
       <el-table-column label="操作" width="140" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>

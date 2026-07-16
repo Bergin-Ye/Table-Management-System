@@ -22,6 +22,7 @@
       <el-table-column prop="factory" label="厂房" width="120" />
       <el-table-column prop="machineNo" label="机台号" width="120" />
       <el-table-column prop="machineBrand" label="品牌" width="120" />
+      <el-table-column prop="createdBy" label="创建人" width="100" />
       <el-table-column label="操作" width="140" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>

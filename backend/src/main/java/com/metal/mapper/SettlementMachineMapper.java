@@ -11,16 +11,16 @@ public interface SettlementMachineMapper {
     SettlementMachine findById(Long id);
 
     @Insert("INSERT INTO settlement_machine (company_id, material_code, category, part_name, unit_usage, ratio, " +
-            "unit_price_with_tax, warranty_period, price_type, remark, machine_model, settlement_machine_count) " +
+            "unit_price_with_tax, warranty_period, price_type, remark, machine_model, settlement_machine_count, created_by, updated_by) " +
             "VALUES (#{companyId}, #{materialCode}, #{category}, #{partName}, #{unitUsage}, #{ratio}, " +
-            "#{unitPriceWithTax}, #{warrantyPeriod}, #{priceType}, #{remark}, #{machineModel}, #{settlementMachineCount})")
+            "#{unitPriceWithTax}, #{warrantyPeriod}, #{priceType}, #{remark}, #{machineModel}, #{settlementMachineCount}, #{createdBy}, #{updatedBy})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(SettlementMachine record);
 
     @Update("UPDATE settlement_machine SET material_code=#{materialCode}, category=#{category}, " +
             "part_name=#{partName}, unit_usage=#{unitUsage}, ratio=#{ratio}, unit_price_with_tax=#{unitPriceWithTax}, " +
             "warranty_period=#{warrantyPeriod}, price_type=#{priceType}, remark=#{remark}, " +
-            "machine_model=#{machineModel}, settlement_machine_count=#{settlementMachineCount} WHERE id=#{id}")
+            "machine_model=#{machineModel}, settlement_machine_count=#{settlementMachineCount}, updated_by=#{updatedBy} WHERE id=#{id}")
     int update(SettlementMachine record);
 
     @Delete("DELETE FROM settlement_machine WHERE id = #{id}")
@@ -31,10 +31,10 @@ public interface SettlementMachineMapper {
 
     @Insert("<script>" +
             "INSERT INTO settlement_machine (company_id, material_code, category, part_name, unit_usage, ratio, " +
-            "unit_price_with_tax, warranty_period, price_type, remark, machine_model, settlement_machine_count) VALUES " +
+            "unit_price_with_tax, warranty_period, price_type, remark, machine_model, settlement_machine_count, created_by, updated_by) VALUES " +
             "<foreach collection='list' item='r' separator=','>" +
             "(#{r.companyId}, #{r.materialCode}, #{r.category}, #{r.partName}, #{r.unitUsage}, #{r.ratio}, " +
-            "#{r.unitPriceWithTax}, #{r.warrantyPeriod}, #{r.priceType}, #{r.remark}, #{r.machineModel}, #{r.settlementMachineCount})" +
+            "#{r.unitPriceWithTax}, #{r.warrantyPeriod}, #{r.priceType}, #{r.remark}, #{r.machineModel}, #{r.settlementMachineCount}, #{r.createdBy}, #{r.updatedBy})" +
             "</foreach>" +
             "</script>")
     int batchInsert(@Param("list") List<SettlementMachine> records);

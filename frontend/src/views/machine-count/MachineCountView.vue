@@ -21,6 +21,7 @@
       <el-table-column prop="ratioPct" label="占比(%)" width="90" />
       <el-table-column prop="statMonth" label="统计月份" width="110" />
       <el-table-column prop="remark" label="备注" width="150" show-overflow-tooltip />
+      <el-table-column prop="createdBy" label="创建人" width="100" />
       <el-table-column label="操作" width="140" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>

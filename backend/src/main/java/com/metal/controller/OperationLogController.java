@@ -2,6 +2,7 @@ package com.metal.controller;
 
 import com.metal.common.PageResult;
 import com.metal.common.Result;
+import com.metal.common.ServiceHelper;
 import com.metal.entity.OperationLog;
 import com.metal.service.OperationLogService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,7 @@ public class OperationLogController {
             @RequestParam(required = false) String action,
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate) {
+        ServiceHelper.requireAdmin();
         return Result.ok(service.query(page, pageSize, userId, tableName, action, startDate, endDate));
     }
 }

@@ -70,7 +70,8 @@ public class MachineMaterialService {
 
     @Transactional
     public MachineMaterial update(MachineMaterial record) {
-        getById(record.getId());
+        MachineMaterial exist = getById(record.getId());
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "编辑");
         applyCalculations(record);
         record.setUpdatedBy(ServiceHelper.getCurrentUserName());
         mapper.update(record);
@@ -79,13 +80,20 @@ public class MachineMaterialService {
 
     @Transactional
     public void delete(Long id) {
-        getById(id);
+        MachineMaterial exist = getById(id);
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
         mapper.deleteById(id);
     }
 
     @Transactional
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) throw new BizException("请选择要删除的记录");
+        if (!ServiceHelper.isAdmin()) {
+            for (Long id : ids) {
+                MachineMaterial exist = getById(id);
+                ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
+            }
+        }
         mapper.batchDelete(ids);
     }
 

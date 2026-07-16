@@ -49,4 +49,46 @@ public final class ServiceHelper {
         AuthInterceptor.UserContext ctx = AuthInterceptor.getCurrentUser();
         return ctx != null ? ctx.getRealName() : "系统";
     }
+
+    /**
+     * 获取当前登录用户的角色
+     *
+     * @return 当前用户角色，未登录时返回 "user"
+     */
+    public static String getCurrentUserRole() {
+        AuthInterceptor.UserContext ctx = AuthInterceptor.getCurrentUser();
+        return ctx != null ? ctx.getRole() : "user";
+    }
+
+    /**
+     * 判断当前用户是否为管理员
+     *
+     * @return true 如果是 admin
+     */
+    public static boolean isAdmin() {
+        return "admin".equals(getCurrentUserRole());
+    }
+
+    /**
+     * Check if current user is admin or the record's creator.
+     * Throws BizException if not authorized to modify.
+     * If the record has null createdBy (historical data), allow the operation.
+     */
+    public static void checkOwnershipOrAdmin(String recordCreatedBy, String action) {
+        if (isAdmin()) return;
+        if (recordCreatedBy == null) return;
+        String currentUser = getCurrentUserName();
+        if (!currentUser.equals(recordCreatedBy)) {
+            throw new BizException("无权限" + action + "：只能操作自己创建的数据");
+        }
+    }
+
+    /**
+     * Check if current user is admin, throw if not
+     */
+    public static void requireAdmin() {
+        if (!isAdmin()) {
+            throw new BizException("无权限：仅管理员可操作");
+        }
+    }
 }

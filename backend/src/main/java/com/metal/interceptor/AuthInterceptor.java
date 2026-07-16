@@ -37,6 +37,7 @@ public class AuthInterceptor implements HandlerInterceptor {
             ctx.setUserId(claims.get("userId", Long.class));
             ctx.setUsername(claims.get("username", String.class));
             ctx.setRealName(claims.get("realName", String.class));
+            ctx.setRole(claims.get("role", String.class));
             USER_CONTEXT.set(ctx);
             return true;
         } catch (Exception e) {
@@ -60,6 +61,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         private Long userId;
         private String username;
         private String realName;
+        private String role;
 
         public Long getUserId() { return userId; }
         public void setUserId(Long userId) { this.userId = userId; }
@@ -67,5 +69,7 @@ public class AuthInterceptor implements HandlerInterceptor {
         public void setUsername(String username) { this.username = username; }
         public String getRealName() { return realName; }
         public void setRealName(String realName) { this.realName = realName; }
+        public String getRole() { return role; }
+        public void setRole(String role) { this.role = role; }
     }
 }

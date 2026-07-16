@@ -30,8 +30,9 @@ public class AuthService {
         if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
             throw new BizException("用户名或密码错误");
         }
-        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRealName());
-        return new LoginResultDTO(token, new LoginResultDTO.UserInfo(user.getId(), user.getUsername(), user.getRealName()));
+        String role = user.getRole() != null ? user.getRole() : "user";
+        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRealName(), role);
+        return new LoginResultDTO(token, new LoginResultDTO.UserInfo(user.getId(), user.getUsername(), user.getRealName(), role));
     }
 
     public SysUser register(String username, String password, String realName) {
@@ -43,6 +44,7 @@ public class AuthService {
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password));
         user.setRealName(realName);
+        user.setRole("user");
         sysUserMapper.insert(user);
         return user;
     }

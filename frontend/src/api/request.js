@@ -39,6 +39,10 @@ request.interceptors.response.use(
       window.location.href = '/login'
       return Promise.reject(error)
     }
+    if (error.response?.status === 403) {
+      ElMessage.error('您没有权限执行此操作')
+      return Promise.reject(error)
+    }
     ElMessage.error(error.response?.data?.msg || error.message || '网络错误')
     return Promise.reject(error)
   }

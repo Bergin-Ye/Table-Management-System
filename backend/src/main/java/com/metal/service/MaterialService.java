@@ -47,26 +47,38 @@ public class MaterialService {
 
     @Transactional
     public Material create(Material material) {
+        String user = ServiceHelper.getCurrentUserName();
+        material.setCreatedBy(user);
+        material.setUpdatedBy(user);
         mapper.insert(material);
         return material;
     }
 
     @Transactional
     public Material update(Material material) {
-        getById(material.getId());
+        Material exist = getById(material.getId());
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "编辑");
+        material.setUpdatedBy(ServiceHelper.getCurrentUserName());
         mapper.update(material);
         return material;
     }
 
     @Transactional
     public void delete(Long id) {
-        getById(id);
+        Material exist = getById(id);
+        ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
         mapper.deleteById(id);
     }
 
     @Transactional
     public void batchDelete(List<Long> ids) {
         if (ids == null || ids.isEmpty()) throw new BizException("请选择要删除的记录");
+        if (!ServiceHelper.isAdmin()) {
+            for (Long id : ids) {
+                Material exist = getById(id);
+                ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "删除");
+            }
+        }
         mapper.batchDelete(ids);
     }
 

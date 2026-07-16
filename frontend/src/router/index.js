@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { ElMessage } from 'element-plus'
 
 const routes = [
   {
@@ -65,13 +66,19 @@ const routes = [
         path: 'operation-log',
         name: 'OperationLog',
         component: () => import('../views/operation-log/OperationLogView.vue'),
-        meta: { title: '操作日志' }
+        meta: { title: '操作日志', requiresAdmin: true }
       },
       {
         path: 'company',
         name: 'Company',
         component: () => import('../views/company/CompanyView.vue'),
-        meta: { title: '公司管理' }
+        meta: { title: '公司管理', requiresAdmin: true }
+      },
+      {
+        path: 'user-management',
+        name: 'UserManagement',
+        component: () => import('../views/admin/UserManageView.vue'),
+        meta: { title: '用户管理', requiresAdmin: true }
       }
     ]
   }
@@ -87,11 +94,33 @@ router.beforeEach((to, from, next) => {
   const token = localStorage.getItem('token')
   if (to.meta.requiresAuth !== false && !token) {
     next('/login')
-  } else if (to.path === '/login' && token) {
-    next('/')
-  } else {
-    next()
+    return
   }
+  if (to.path === '/login' && token) {
+    next('/')
+    return
+  }
+  // 检查管理员权限
+  if (to.meta.requiresAdmin) {
+    const userStr = localStorage.getItem('user')
+    if (userStr) {
+      try {
+        const user = JSON.parse(userStr)
+        if (user.role !== 'admin') {
+          ElMessage.warning('您没有管理员权限，无法访问该页面')
+          next('/delivery-record')
+          return
+        }
+      } catch {
+        next('/delivery-record')
+        return
+      }
+    } else {
+      next('/delivery-record')
+      return
+    }
+  }
+  next()
 })
 
 export default router
