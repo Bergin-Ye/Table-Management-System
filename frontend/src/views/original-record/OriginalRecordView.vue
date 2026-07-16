@@ -36,7 +36,11 @@
       <el-table-column prop="id" label="ID" width="60" sortable="custom" fixed="left" />
       <!-- 日期信息 -->
       <el-table-column prop="recordDate" label="日期" width="105" sortable="custom" />
-      <el-table-column prop="yearMonth" label="年月" width="85" />
+      <el-table-column prop="yearMonth" label="年月" width="85">
+        <template #default="{ row }">
+          {{ row.yearMonth || getYearMonth(row.recordDate) }}
+        </template>
+      </el-table-column>
       <!-- 班次 & 厂房 -->
       <el-table-column prop="shift" label="班次" width="75">
         <template #default="{ row }">
@@ -225,7 +229,7 @@ import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
 import { useCrud } from '../../composables/useCrud'
-import { toSnakeCase } from '../../utils'
+import { toSnakeCase, getYearMonth } from '../../utils'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchForm from '../../components/SearchForm.vue'
 import ToolBar from '../../components/ToolBar.vue'
@@ -245,7 +249,7 @@ const isCopy = ref(false)
 const submitLoading = ref(false)
 const formRef = ref(null)
 const sortField = ref('id')
-const sortOrder = ref('desc')
+const sortOrder = ref('asc')
 
 const defaultForm = {
   id: null, recordDate: '', shift: '', factory: '', serialNumber: '', machineNo: '',

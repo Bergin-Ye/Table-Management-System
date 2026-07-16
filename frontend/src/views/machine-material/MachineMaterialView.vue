@@ -29,7 +29,11 @@
       <el-table-column type="selection" width="44" fixed="left" />
       <el-table-column prop="id" label="ID" width="60" sortable="custom" />
       <el-table-column prop="recordDate" label="日期" width="100" sortable="custom" />
-      <el-table-column prop="yearMonth" label="年月" width="80" />
+      <el-table-column prop="yearMonth" label="年月" width="80">
+        <template #default="{ row }">
+          {{ row.yearMonth || getYearMonth(row.recordDate) }}
+        </template>
+      </el-table-column>
       <el-table-column prop="shift" label="班次" width="70" />
       <el-table-column prop="factory" label="厂房" width="80" />
       <el-table-column prop="serialNumber" label="序列号" width="80" />
@@ -200,7 +204,7 @@ import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
 import { useCrud } from '../../composables/useCrud'
-import { toSnakeCase } from '../../utils'
+import { toSnakeCase, getYearMonth } from '../../utils'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchForm from '../../components/SearchForm.vue'
 import ToolBar from '../../components/ToolBar.vue'
@@ -220,7 +224,7 @@ const isCopy = ref(false)
 const submitLoading = ref(false)
 const formRef = ref(null)
 const sortField = ref('id')
-const sortOrder = ref('desc')
+const sortOrder = ref('asc')
 
 const defaultForm = {
   id: null, recordDate: '', shift: '', factory: '', serialNumber: '', machineNo: '',

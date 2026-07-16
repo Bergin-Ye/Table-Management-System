@@ -83,6 +83,12 @@ html, body, #app {
   border-bottom: 1px solid #E5E5EA;
 }
 
+/* 表格水平滚动条固定在可视区域 */
+.page-content .el-table__body-wrapper {
+  max-height: calc(100vh - 390px);
+  overflow-y: auto !important;
+}
+
 /* 搜索表单 */
 .search-card .el-form-item {
   margin-bottom: 0;

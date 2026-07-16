@@ -56,7 +56,11 @@
       <el-table-column type="selection" width="44" fixed="left" />
       <el-table-column prop="id" label="ID" width="64" sortable="custom" />
       <el-table-column prop="recordDate" label="日期" width="110" sortable="custom" />
-      <el-table-column prop="yearMonth" label="年月" width="90" />
+      <el-table-column prop="yearMonth" label="年月" width="90">
+        <template #default="{ row }">
+          {{ row.yearMonth || getYearMonth(row.recordDate) }}
+        </template>
+      </el-table-column>
       <el-table-column prop="category" label="类别" width="100" />
       <el-table-column prop="materialName" label="物料名称" width="120" show-overflow-tooltip />
       <el-table-column prop="specModel" label="规格型号" width="180" show-overflow-tooltip />
@@ -205,7 +209,7 @@ import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
 import { useCrud } from '../../composables/useCrud'
-import { downloadBlob, toSnakeCase } from '../../utils'
+import { downloadBlob, toSnakeCase, getYearMonth } from '../../utils'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchForm from '../../components/SearchForm.vue'
 import ToolBar from '../../components/ToolBar.vue'
@@ -256,7 +260,7 @@ const rules = {
 }
 
 const sortField = ref('id')
-const sortOrder = ref('desc')
+const sortOrder = ref('asc')
 
 function doFetch() {
   return fetchData({
@@ -293,7 +297,7 @@ function handleSortChange({ prop, order }) {
     sortOrder.value = order === 'ascending' ? 'asc' : 'desc'
   } else {
     sortField.value = 'id'
-    sortOrder.value = 'desc'
+    sortOrder.value = 'asc'
   }
   queryParams.page = 1
   doFetch()

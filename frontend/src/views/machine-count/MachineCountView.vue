@@ -103,7 +103,7 @@ const isEdit = ref(false)
 const submitLoading = ref(false)
 const formRef = ref(null)
 const sortField = ref('id')
-const sortOrder = ref('desc')
+const sortOrder = ref('asc')
 
 const defaultForm = {
   id: null,

@@ -23,6 +23,16 @@
       @export="handleExport"
     />
 
+    <!-- 合计汇总行 -->
+    <div class="summary-row" v-if="list.length">
+      <span class="summary-label">本页合计</span>
+      <span class="summary-item">送货数量：<b>{{ summary.deliveryQuantity }}</b></span>
+      <span class="summary-item">上机数量：<b>{{ summary.machineOnQuantity }}</b></span>
+      <span class="summary-item">当月返修：<b>{{ summary.monthRepair }}</b></span>
+      <span class="summary-item">超比数量：<b>{{ summary.excessQuantity }}</b></span>
+      <span class="summary-item">超比含税金额：<b>{{ summary.excessAmountWithTax }}</b></span>
+    </div>
+
     <!-- 数据表格 -->
     <el-table
       :data="list"
@@ -175,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted, computed } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '../../api/delivery-stats'
 import { useCompanyStore } from '../../stores/company'
@@ -228,6 +238,17 @@ const rules = {
   category: [{ required: true, message: '请输入类别', trigger: 'blur' }],
   materialCode: [{ required: true, message: '请输入物料编码', trigger: 'blur' }]
 }
+
+const summary = computed(() => {
+  const sum = (field) => list.value.reduce((acc, r) => acc + (Number(r[field]) || 0), 0)
+  return {
+    deliveryQuantity: sum('deliveryQuantity'),
+    machineOnQuantity: sum('machineOnQuantity'),
+    monthRepair: sum('monthRepair'),
+    excessQuantity: sum('excessQuantity'),
+    excessAmountWithTax: sum('excessAmountWithTax')
+  }
+})
 
 function doFetch() {
   return fetchData({
@@ -359,6 +380,29 @@ onMounted(() => {
 </script>
 
 <style scoped>
+.summary-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 10px 6px;
+  margin-bottom: 12px;
+  background: #F5F5F7;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #1D1D1F;
+  flex-wrap: wrap;
+}
+
+.summary-label {
+  font-weight: 600;
+  color: #0071E3;
+  margin-right: 4px;
+}
+
+.summary-item b {
+  color: #0071E3;
+}
+
 .pagination-wrap {
   display: flex;
   justify-content: flex-end;
