@@ -33,7 +33,7 @@ const props = defineProps({
   modelValue: Boolean
 })
 
-defineEmits(['update:modelValue', 'close'])
+const emit = defineEmits(['update:modelValue', 'close'])
 
 const visible = ref(props.modelValue)
 const logs = ref([])
@@ -45,9 +45,7 @@ watch(() => props.modelValue, (val) => {
 })
 
 watch(visible, (val) => {
-  if (!val) {
-    // handled by drawer close
-  }
+  emit('update:modelValue', val)
 })
 
 async function fetchLogs() {

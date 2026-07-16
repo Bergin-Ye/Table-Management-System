@@ -20,7 +20,7 @@
             :value="c.id"
           />
         </el-select>
-        <el-badge :value="0" :hidden="true">
+        <el-badge :value="0" :hidden="true" v-if="authStore.isAdmin">
           <el-button link class="header-btn" @click="showLogDrawer = true">
             <el-icon :size="18"><Clock /></el-icon>
           </el-button>
