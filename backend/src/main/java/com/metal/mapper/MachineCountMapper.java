@@ -28,6 +28,14 @@ public interface MachineCountMapper {
     @Delete("<script>DELETE FROM machine_count WHERE id IN <foreach collection='ids' item='id' open='(' close=')' separator=','>#{id}</foreach></script>")
     int batchDelete(@Param("ids") List<Long> ids);
 
+    @Insert("<script>" +
+            "INSERT INTO machine_count (company_id, machine_model, count, ratio_pct, stat_month, remark, created_by, updated_by) VALUES " +
+            "<foreach collection='list' item='r' separator=','>" +
+            "(#{r.companyId}, #{r.machineModel}, #{r.count}, #{r.ratioPct}, #{r.statMonth}, #{r.remark}, #{r.createdBy}, #{r.updatedBy})" +
+            "</foreach>" +
+            "</script>")
+    int batchInsert(@Param("list") List<MachineCount> records);
+
     @Select("<script>" +
             "SELECT * FROM machine_count WHERE 1=1 " +
             "<if test='companyId != null'>AND company_id = #{companyId}</if> " +

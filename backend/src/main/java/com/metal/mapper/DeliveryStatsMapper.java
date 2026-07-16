@@ -34,6 +34,20 @@ public interface DeliveryStatsMapper {
     @Delete("<script>DELETE FROM delivery_stats WHERE id IN <foreach collection='ids' item='id' open='(' close=')' separator=','>#{id}</foreach></script>")
     int batchDelete(@Param("ids") List<Long> ids);
 
+    /** 批量插入 */
+    @Insert("<script>" +
+            "INSERT INTO delivery_stats (company_id, category, material_code, system_name, part_name, unit_usage, ratio, " +
+            "unit_price_with_tax, machine_count, delivery_quantity, machine_on_quantity, month_repair, " +
+            "agreed_ratio_quantity, excess_quantity, excess_amount_with_tax, stat_date, `year_month`, created_by, updated_by) VALUES " +
+            "<foreach collection='list' item='r' separator=','>" +
+            "(#{r.companyId}, #{r.category}, #{r.materialCode}, #{r.systemName}, #{r.partName}, #{r.unitUsage}, #{r.ratio}, " +
+            "#{r.unitPriceWithTax}, #{r.machineCount}, #{r.deliveryQuantity}, #{r.machineOnQuantity}, #{r.monthRepair}, " +
+            "#{r.agreedRatioQuantity}, #{r.excessQuantity}, #{r.excessAmountWithTax}, #{r.statDate}, #{r.yearMonth}, " +
+            "#{r.createdBy}, #{r.updatedBy})" +
+            "</foreach>" +
+            "</script>")
+    int batchInsert(@Param("list") List<DeliveryStats> records);
+
     @Select("<script>" +
             "SELECT * FROM delivery_stats WHERE 1=1 " +
             "<if test='companyId != null'>AND company_id = #{companyId}</if> " +

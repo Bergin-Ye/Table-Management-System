@@ -67,6 +67,10 @@ public class DeliveryRecordService {
     public DeliveryRecord create(DeliveryRecord record) {
         applyYearMonth(record);
         String user = ServiceHelper.getCurrentUserName();
+        // 使用前端传来的 companyId，未传时默认归属金属厂
+        if (record.getCompanyId() == null) {
+            record.setCompanyId(1L);
+        }
         record.setCreatedBy(user);
         record.setUpdatedBy(user);
         mapper.insert(record);
@@ -110,7 +114,7 @@ public class DeliveryRecordService {
      * 采用分批 INSERT + 事务保护：每 500 条一批，中途失败自动回滚整批
      */
     @Transactional
-    public ImportResultDTO importExcel(MultipartFile file) {
+    public ImportResultDTO importExcel(MultipartFile file, Long companyId) {
         List<ImportResultDTO.FailDetail> failDetails = new ArrayList<>();
         List<DeliveryRecord> batch = new ArrayList<>(IMPORT_BATCH_SIZE);
         int[] counts = {0, 0, 0}; // total, success, fail
@@ -128,6 +132,8 @@ public class DeliveryRecordService {
                         }
                         applyYearMonth(data);
                         String user = ServiceHelper.getCurrentUserName();
+                        // 使用导入时指定的公司ID，未传时默认归属金属厂
+                        data.setCompanyId(companyId != null ? companyId : 1L);
                         data.setCreatedBy(user);
                         data.setUpdatedBy(user);
                         batch.add(data);

@@ -42,4 +42,12 @@ public interface MachineDetailMapper {
                                @Param("brand") String brand,
                                @Param("sortField") String sortField,
                                @Param("sortOrder") String sortOrder);
+
+    @Insert("<script>" +
+            "INSERT INTO machine_detail (company_id, factory, machine_no, machine_brand, created_by, updated_by) VALUES " +
+            "<foreach collection='list' item='r' separator=','>" +
+            "(#{r.companyId}, #{r.factory}, #{r.machineNo}, #{r.machineBrand}, #{r.createdBy}, #{r.updatedBy})" +
+            "</foreach>" +
+            "</script>")
+    int batchInsert(@Param("list") List<MachineDetail> records);
 }

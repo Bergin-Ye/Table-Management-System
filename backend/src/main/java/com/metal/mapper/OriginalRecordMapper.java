@@ -43,6 +43,24 @@ public interface OriginalRecordMapper {
     @Delete("<script>DELETE FROM original_record WHERE id IN <foreach collection='ids' item='id' open='(' close=')' separator=','>#{id}</foreach></script>")
     int batchDelete(@Param("ids") List<Long> ids);
 
+    /** 批量插入（每批最多 500 条，提升大数据量导入性能） */
+    @Insert("<script>" +
+            "INSERT INTO original_record (company_id, `year_month`, record_date, shift, factory, serial_number, machine_no, " +
+            "diagnostician, repair_person, repair_request_time, start_time, end_time, repair_hours, downtime_hours, " +
+            "machine_model, fault_phenomenon, fault_description, material_code, part_name, quantity, " +
+            "machine_on_material, machine_off_material, remark, confirmer, delivery_record_ref, " +
+            "last_machine_on_time, is_out_of_warranty, created_by, updated_by) VALUES " +
+            "<foreach collection='list' item='r' separator=','>" +
+            "(#{r.companyId}, #{r.yearMonth}, #{r.recordDate}, #{r.shift}, #{r.factory}, #{r.serialNumber}, #{r.machineNo}, " +
+            "#{r.diagnostician}, #{r.repairPerson}, #{r.repairRequestTime}, #{r.startTime}, #{r.endTime}, " +
+            "#{r.repairHours}, #{r.downtimeHours}, #{r.machineModel}, #{r.faultPhenomenon}, #{r.faultDescription}, " +
+            "#{r.materialCode}, #{r.partName}, #{r.quantity}, #{r.machineOnMaterial}, #{r.machineOffMaterial}, " +
+            "#{r.remark}, #{r.confirmer}, #{r.deliveryRecordRef}, #{r.lastMachineOnTime}, #{r.isOutOfWarranty}, " +
+            "#{r.createdBy}, #{r.updatedBy})" +
+            "</foreach>" +
+            "</script>")
+    int batchInsert(@Param("list") List<OriginalRecord> records);
+
     /**
      * 查询某个下机物料的最后一次上机时间
      */

@@ -71,8 +71,9 @@ public class DeliveryRecordController {
     }
 
     @PostMapping("/import")
-    public Result<ImportResultDTO> importExcel(@RequestParam("file") MultipartFile file) {
-        return Result.ok(service.importExcel(file));
+    public Result<ImportResultDTO> importExcel(@RequestParam("file") MultipartFile file,
+                                               @RequestParam(required = false) Long companyId) {
+        return Result.ok(service.importExcel(file, companyId));
     }
 
     @GetMapping("/export")

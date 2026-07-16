@@ -28,9 +28,10 @@ export function batchDelete(ids) {
   return request.post('/delivery-record/batch-delete', { ids })
 }
 
-export function importExcel(file) {
+export function importExcel(file, companyId) {
   const formData = new FormData()
   formData.append('file', file)
+  if (companyId) formData.append('companyId', companyId)
   return request.post('/delivery-record/import', formData)
 }
 

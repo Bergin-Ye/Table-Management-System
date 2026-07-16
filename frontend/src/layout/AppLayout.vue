@@ -98,7 +98,7 @@
 
       <!-- 内容区 -->
       <el-main class="layout-main">
-        <router-view />
+        <router-view :key="currentCompanyId" />
       </el-main>
     </el-container>
 

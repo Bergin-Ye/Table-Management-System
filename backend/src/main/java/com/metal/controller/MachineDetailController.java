@@ -3,10 +3,13 @@ package com.metal.controller;
 import com.metal.common.PageResult;
 import com.metal.common.Result;
 import com.metal.dto.BatchDeleteDTO;
+import com.metal.dto.ImportResultDTO;
 import com.metal.entity.MachineDetail;
 import com.metal.service.MachineDetailService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/api/machine-detail")
@@ -54,5 +57,25 @@ public class MachineDetailController {
     public Result<Void> batchDelete(@RequestBody BatchDeleteDTO dto) {
         service.batchDelete(dto.getIds());
         return Result.ok();
+    }
+
+    @PostMapping("/import")
+    public Result<ImportResultDTO> importExcel(@RequestParam("file") MultipartFile file,
+                                               @RequestParam(required = false) Long companyId) {
+        return Result.ok(service.importExcel(file, companyId));
+    }
+
+    @GetMapping("/export")
+    public void exportExcel(HttpServletResponse response,
+                            @RequestParam(required = false) Long companyId,
+                            @RequestParam(required = false) String keyword,
+                            @RequestParam(required = false) String factory,
+                            @RequestParam(required = false) String brand) {
+        service.exportExcel(response, companyId, keyword, factory, brand);
+    }
+
+    @GetMapping("/template")
+    public void downloadTemplate(HttpServletResponse response) {
+        service.downloadTemplate(response);
     }
 }

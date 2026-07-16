@@ -3,11 +3,14 @@ package com.metal.controller;
 import com.metal.common.PageResult;
 import com.metal.common.Result;
 import com.metal.dto.BatchDeleteDTO;
+import com.metal.dto.ImportResultDTO;
 import com.metal.entity.DeliveryStats;
 import com.metal.entity.DeliveryStatsDaily;
 import com.metal.service.DeliveryStatsService;
+import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.Map;
@@ -67,6 +70,26 @@ public class DeliveryStatsController {
     public Result<Void> batchDelete(@RequestBody BatchDeleteDTO dto) {
         service.batchDelete(dto.getIds());
         return Result.ok();
+    }
+
+    @PostMapping("/import")
+    public Result<ImportResultDTO> importExcel(@RequestParam("file") MultipartFile file,
+                                               @RequestParam(required = false) Long companyId) {
+        return Result.ok(service.importExcel(file, companyId));
+    }
+
+    @GetMapping("/export")
+    public void exportExcel(HttpServletResponse response,
+                            @RequestParam(required = false) Long companyId,
+                            @RequestParam(required = false) String keyword,
+                            @RequestParam(required = false) String category,
+                            @RequestParam(required = false) String yearMonth) {
+        service.exportExcel(response, companyId, keyword, category, yearMonth);
+    }
+
+    @GetMapping("/template")
+    public void downloadTemplate(HttpServletResponse response) {
+        service.downloadTemplate(response);
     }
 
     // 简单手动映射，避免引入 Jackson 复杂配置

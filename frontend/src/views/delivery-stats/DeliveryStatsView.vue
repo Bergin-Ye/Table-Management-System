@@ -20,7 +20,9 @@
       :selected-count="selectedRows.length"
       @add="handleAdd"
       @batch-delete="batchDelete"
+      @import="handleImport"
       @export="handleExport"
+      @template="handleTemplateDownload"
     />
 
     <!-- 全表合计 -->
@@ -193,7 +195,7 @@ import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
 import { useCrud } from '../../composables/useCrud'
-import { getDaysInMonth, getYearMonth } from '../../utils'
+import { getDaysInMonth, getYearMonth, downloadBlob } from '../../utils'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchForm from '../../components/SearchForm.vue'
 import ToolBar from '../../components/ToolBar.vue'
@@ -291,8 +293,42 @@ function handleReset() {
   doFetch()
 }
 
-function handleExport() {
-  ElMessage.info('导出功能开发中')
+function handleImport() {
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.xlsx,.xls'
+  input.onchange = async (e) => {
+    const file = e.target.files[0]
+    if (!file) return
+    try {
+      const res = await api.importExcel(file, companyStore.currentCompanyId)
+      const d = res.data
+      ElMessage.success(`导入完成：成功 ${d.success} 条，失败 ${d.fail} 条`)
+      doFetch()
+    } catch { /* error handled in interceptor */ }
+  }
+  input.click()
+}
+
+async function handleExport() {
+  try {
+    const response = await api.exportExcel({
+      keyword: searchForm.keyword,
+      category: searchForm.category,
+      yearMonth: searchForm.yearMonth,
+      companyId: companyStore.currentCompanyId
+    })
+    downloadBlob(response.data, '超比统计.xlsx')
+    ElMessage.success('导出成功')
+  } catch { /* error handled */ }
+}
+
+async function handleTemplateDownload() {
+  try {
+    const response = await api.downloadTemplate()
+    downloadBlob(response.data, '超比统计模板.xlsx')
+    ElMessage.success('模板下载成功')
+  } catch { /* error handled */ }
 }
 
 // ---- 每日明细辅助 ----

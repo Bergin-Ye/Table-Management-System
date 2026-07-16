@@ -29,6 +29,16 @@ public interface SettlementMachineMapper {
     @Delete("<script>DELETE FROM settlement_machine WHERE id IN <foreach collection='ids' item='id' open='(' close=')' separator=','>#{id}</foreach></script>")
     int batchDelete(@Param("ids") List<Long> ids);
 
+    @Insert("<script>" +
+            "INSERT INTO settlement_machine (company_id, material_code, category, part_name, unit_usage, ratio, " +
+            "unit_price_with_tax, warranty_period, price_type, remark, machine_model, settlement_machine_count) VALUES " +
+            "<foreach collection='list' item='r' separator=','>" +
+            "(#{r.companyId}, #{r.materialCode}, #{r.category}, #{r.partName}, #{r.unitUsage}, #{r.ratio}, " +
+            "#{r.unitPriceWithTax}, #{r.warrantyPeriod}, #{r.priceType}, #{r.remark}, #{r.machineModel}, #{r.settlementMachineCount})" +
+            "</foreach>" +
+            "</script>")
+    int batchInsert(@Param("list") List<SettlementMachine> records);
+
     @Select("<script>" +
             "SELECT * FROM settlement_machine WHERE 1=1 " +
             "<if test='companyId != null'>AND company_id = #{companyId}</if> " +

@@ -27,3 +27,23 @@ export function remove(id) {
 export function batchDelete(ids) {
   return request.post('/material/batch-delete', { ids })
 }
+
+export function importExcel(file, companyId) {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (companyId) formData.append('companyId', companyId)
+  return request.post('/material/import', formData)
+}
+
+export function exportExcel(params) {
+  return request.get('/material/export', {
+    params,
+    responseType: 'blob'
+  })
+}
+
+export function downloadTemplate() {
+  return request.get('/material/template', {
+    responseType: 'blob'
+  })
+}

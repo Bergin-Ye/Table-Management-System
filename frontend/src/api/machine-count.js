@@ -23,3 +23,23 @@ export function remove(id) {
 export function batchDelete(ids) {
   return request.post('/machine-count/batch-delete', { ids })
 }
+
+export function importExcel(file, companyId) {
+  const formData = new FormData()
+  formData.append('file', file)
+  if (companyId) formData.append('companyId', companyId)
+  return request.post('/machine-count/import', formData)
+}
+
+export function exportExcel(params) {
+  return request.get('/machine-count/export', {
+    params,
+    responseType: 'blob'
+  })
+}
+
+export function downloadTemplate() {
+  return request.get('/machine-count/template', {
+    responseType: 'blob'
+  })
+}

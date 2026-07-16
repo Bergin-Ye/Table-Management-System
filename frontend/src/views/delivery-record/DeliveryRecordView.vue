@@ -36,7 +36,7 @@
     <ToolBar
       :selected-count="selectedRows.length"
       @add="handleAdd"
-      @batch-delete="handleBatchDelete"
+      @batch-delete="batchDelete"
       @import="handleImport"
       @export="handleExport"
       @template="handleTemplateDownload"
@@ -365,6 +365,10 @@ async function handleSubmit() {
   }
 }
 
+function batchDelete() {
+  handleBatchDelete(selectedRows.value.map(r => r.id))
+}
+
 // 导入
 function handleImport() {
   const input = document.createElement('input')
@@ -374,7 +378,7 @@ function handleImport() {
     const file = e.target.files[0]
     if (!file) return
     try {
-      const res = await deliveryApi.importExcel(file)
+      const res = await deliveryApi.importExcel(file, companyStore.currentCompanyId)
       const d = res.data
       ElMessage.success(`导入完成：成功 ${d.success} 条，失败 ${d.fail} 条`)
       doFetch()
