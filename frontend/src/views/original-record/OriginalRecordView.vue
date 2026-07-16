@@ -33,32 +33,45 @@
 
     <el-table :data="list" v-loading="loading" border stripe @selection-change="handleSelectionChange" @sort-change="handleSortChange">
       <el-table-column type="selection" width="44" fixed="left" />
-      <el-table-column prop="id" label="ID" width="60" sortable="custom" />
-      <el-table-column prop="recordDate" label="日期" width="100" sortable="custom" />
-      <el-table-column prop="yearMonth" label="年月" width="80" />
-      <el-table-column prop="shift" label="班次" width="70" />
-      <el-table-column prop="factory" label="厂房" width="80" />
-      <el-table-column prop="serialNumber" label="序列号" width="80" />
-      <el-table-column prop="machineNo" label="机台号" width="90" />
-      <el-table-column prop="diagnostician" label="诊断人" width="80" />
-      <el-table-column prop="repairPerson" label="维修人" width="80" />
-      <el-table-column prop="machineModel" label="机型" width="100" />
-      <el-table-column prop="faultPhenomenon" label="故障现象" width="120" show-overflow-tooltip />
-      <el-table-column prop="materialCode" label="料号" width="110" sortable="custom" />
-      <el-table-column prop="partName" label="配件名称" width="110" />
-      <el-table-column prop="quantity" label="数量" width="60" />
-      <el-table-column prop="repairHours" label="维修工时" width="90" />
-      <el-table-column prop="downtimeHours" label="停机工时" width="90" />
-      <el-table-column prop="machineOnMaterial" label="上机物料" width="110" show-overflow-tooltip />
-      <el-table-column prop="machineOffMaterial" label="下机物料" width="110" show-overflow-tooltip />
-      <el-table-column prop="isOutOfWarranty" label="是否过保" width="90">
+      <el-table-column prop="id" label="ID" width="60" sortable="custom" fixed="left" />
+      <!-- 日期信息 -->
+      <el-table-column prop="recordDate" label="日期" width="105" sortable="custom" />
+      <el-table-column prop="yearMonth" label="年月" width="85" />
+      <!-- 班次 & 厂房 -->
+      <el-table-column prop="shift" label="班次" width="75">
         <template #default="{ row }">
-          <el-tag :type="warrantyTagType(row.isOutOfWarranty)" size="small">{{ row.isOutOfWarranty }}</el-tag>
+          <el-tag v-if="row.shift === '白班'" type="primary" size="small">白班</el-tag>
+          <el-tag v-else-if="row.shift === '夜班'" type="info" size="small">夜班</el-tag>
+          <span v-else>{{ row.shift }}</span>
         </template>
       </el-table-column>
+      <el-table-column prop="factory" label="厂房" width="80" />
+      <!-- 机台信息 -->
+      <el-table-column prop="machineNo" label="机台号" width="90" />
+      <el-table-column prop="machineModel" label="机型" width="110" show-overflow-tooltip />
+      <!-- 人员 -->
+      <el-table-column prop="diagnostician" label="诊断人" width="80" />
+      <el-table-column prop="repairPerson" label="维修人" width="80" />
       <el-table-column prop="confirmer" label="确认人" width="80" />
-      <el-table-column prop="createdBy" label="创建人" width="80" />
-      <el-table-column label="操作" width="170" fixed="right">
+      <!-- 故障 -->
+      <el-table-column prop="faultPhenomenon" label="故障现象" width="130" show-overflow-tooltip />
+      <!-- 物料 -->
+      <el-table-column prop="materialCode" label="料号" width="115" sortable="custom" />
+      <el-table-column prop="partName" label="配件" width="100" show-overflow-tooltip />
+      <el-table-column prop="quantity" label="数量" width="65" />
+      <!-- 上/下机 -->
+      <el-table-column prop="machineOnMaterial" label="上机物料号" width="120" show-overflow-tooltip />
+      <el-table-column prop="machineOffMaterial" label="下机物料号" width="120" show-overflow-tooltip />
+      <!-- 工时 & 过保 -->
+      <el-table-column prop="repairHours" label="维修工时" width="90" />
+      <el-table-column prop="downtimeHours" label="停机工时" width="90" />
+      <el-table-column prop="isOutOfWarranty" label="是否过保" width="90">
+        <template #default="{ row }">
+          <el-tag :type="warrantyTagType(row.isOutOfWarranty)" size="small">{{ row.isOutOfWarranty || '-' }}</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="createdBy" label="操作人" width="80" />
+      <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
           <el-button link type="primary" size="small" @click="handleCopy(row)">复制</el-button>

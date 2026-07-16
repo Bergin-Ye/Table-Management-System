@@ -29,9 +29,10 @@
       <el-table-column prop="machineModel" label="机型" width="120" />
       <el-table-column prop="settlementMachineCount" label="结算机台数" width="120" />
       <el-table-column prop="remark" label="备注" width="150" show-overflow-tooltip />
-      <el-table-column label="操作" width="140" fixed="right">
+      <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button link type="primary" size="small" @click="handleCopy(row)">复制</el-button>
           <el-button link type="danger" size="small" @click="handleDelete(row.id)">删除</el-button>
         </template>
       </el-table-column>
@@ -41,7 +42,7 @@
       <el-pagination v-model:current-page="queryParams.page" v-model:page-size="queryParams.pageSize" :page-sizes="[20, 50, 100]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange" @current-change="handlePageChange" />
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑结算机台数' : '新增结算机台数'" width="800px" :close-on-click-modal="false" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑结算机台数' : (isCopy ? '复制结算机台数' : '新增结算机台数')" width="800px" :close-on-click-modal="false" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
         <el-row :gutter="16">
           <el-col :span="12">
@@ -141,6 +142,7 @@ const { handleDelete, handleBatchDelete } = useCrud(api, doFetch)
 const searchForm = reactive({ keyword: '', machineModel: '' })
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const isCopy = ref(false)
 const submitLoading = ref(false)
 const formRef = ref(null)
 const sortField = ref('id')
@@ -188,10 +190,16 @@ function handleSortChange({ prop, order }) {
 }
 
 function resetForm() { Object.assign(form, { ...defaultForm }) }
-function handleAdd() { isEdit.value = false; resetForm(); dialogVisible.value = true }
+function handleAdd() { isEdit.value = false; isCopy.value = false; resetForm(); dialogVisible.value = true }
 async function handleEdit(row) {
-  isEdit.value = true
+  isEdit.value = true; isCopy.value = false
   const res = await api.getDetail(row.id); Object.assign(form, res.data)
+  dialogVisible.value = true
+}
+async function handleCopy(row) {
+  isEdit.value = false; isCopy.value = true
+  const res = await api.getDetail(row.id)
+  Object.assign(form, { ...res.data, id: null })
   dialogVisible.value = true
 }
 

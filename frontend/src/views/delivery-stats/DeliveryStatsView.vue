@@ -50,9 +50,10 @@
       <el-table-column prop="excessAmountWithTax" label="超比含税金额" width="120" />
       <el-table-column prop="statDate" label="统计日期" width="110" />
       <el-table-column prop="yearMonth" label="年月" width="90" />
-      <el-table-column label="操作" width="140" fixed="right">
+      <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+          <el-button link type="primary" size="small" @click="handleCopy(row)">复制</el-button>
           <el-button link type="danger" size="small" @click="handleDelete(row.id)">删除</el-button>
         </template>
       </el-table-column>
@@ -74,7 +75,7 @@
     <!-- 新增/编辑对话框 -->
     <el-dialog
       v-model="dialogVisible"
-      :title="isEdit ? '编辑送货超比统计' : '新增送货超比统计'"
+      :title="isEdit ? '编辑送货超比统计' : (isCopy ? '复制送货超比统计' : '新增送货超比统计')"
       width="1000px"
       :close-on-click-modal="false"
       destroy-on-close
@@ -200,6 +201,7 @@ const searchForm = reactive({
 
 const dialogVisible = ref(false)
 const isEdit = ref(false)
+const isCopy = ref(false)
 const submitLoading = ref(false)
 const formRef = ref(null)
 
@@ -292,7 +294,7 @@ function resetForm() {
 }
 
 function handleAdd() {
-  isEdit.value = false
+  isEdit.value = false; isCopy.value = false
   resetForm()
   // 默认当月
   const today = new Date()
@@ -303,10 +305,23 @@ function handleAdd() {
 }
 
 async function handleEdit(row) {
-  isEdit.value = true
+  isEdit.value = true; isCopy.value = false
   const res = await api.getDetail(row.id)
   Object.assign(form, res.data)
-  // 加载已有 dailies
+  try {
+    const dailiesRes = await api.getDailies(row.id)
+    const existingDailies = dailiesRes.data || []
+    dailies.value = generateDailies(form.statDate, existingDailies)
+  } catch {
+    dailies.value = generateDailies(form.statDate, [])
+  }
+  dialogVisible.value = true
+}
+
+async function handleCopy(row) {
+  isEdit.value = false; isCopy.value = true
+  const res = await api.getDetail(row.id)
+  Object.assign(form, { ...res.data, id: null })
   try {
     const dailiesRes = await api.getDailies(row.id)
     const existingDailies = dailiesRes.data || []

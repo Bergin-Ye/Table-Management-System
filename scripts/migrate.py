@@ -24,11 +24,38 @@ def safe_float(v):
     try: return float(str(v)) if pd.notna(v) and v != '' else None
     except: return None
 def safe_date(v):
-    try: return pd.to_datetime(v).strftime('%Y-%m-%d') if pd.notna(v) and v != '' else None
-    except: return None
+    """安全转换日期：支持字符串日期和 Excel 日期序列号"""
+    try:
+        if pd.isna(v) or str(v).strip() == '':
+            return None
+        try:
+            return pd.to_datetime(v).strftime('%Y-%m-%d')
+        except Exception:
+            # 可能是 Excel 日期序列号（如 "46208.0"），用 origin='1899-12-30' 转换
+            serial = float(str(v))
+            if serial > 1:
+                base = pd.Timestamp('1899-12-30')
+                return (base + pd.Timedelta(days=serial)).strftime('%Y-%m-%d')
+            return None
+    except Exception:
+        return None
+
 def safe_datetime(v):
-    try: return pd.to_datetime(v).strftime('%Y-%m-%d %H:%M:%S') if pd.notna(v) and v != '' else None
-    except: return None
+    """安全转换日期时间：支持字符串日期时间和 Excel 日期序列号"""
+    try:
+        if pd.isna(v) or str(v).strip() == '':
+            return None
+        try:
+            return pd.to_datetime(v).strftime('%Y-%m-%d %H:%M:%S')
+        except Exception:
+            # 可能是 Excel 日期序列号，转换后只返回日期部分
+            serial = float(str(v))
+            if serial > 1:
+                base = pd.Timestamp('1899-12-30')
+                return (base + pd.Timedelta(days=serial)).strftime('%Y-%m-%d')
+            return None
+    except Exception:
+        return None
 
 def clean_col(name):
     if pd.isna(name): return None
@@ -111,40 +138,40 @@ def import_original():
     df.columns = [clean_col(c) for c in df.columns]
     df = df.loc[:, ~df.columns.duplicated()]
 
-    # This sheet has columns: 年+月, 日期, 空白, 班次, 厂房, 序列号, 机台号, 诊断人, 维修人,
-    # 报修时间, 开始时间, 结束时间, 维修工时, 停机工时, 机型, 故障现象, 空白, 料号, 配件名称,
-    # 数量, 上机物料, 下机物料, 备注, 确认人, 送货记录, 空白, 上次上机时间, 是否过保, ...
+    # Excel 列序：年+月, 日期, 班次, 厂房, 序列号, 机台号, 诊断人, 维修人,
+    # 报修时间, 开始时间, 结束时间, 维修工时, 停机工时, 机型, 故障现象, (空白),
+    # 料号, 配件名称, 数量, 上机物料, 下机物料, 备注, 确认人, 送货记录, (空白),
+    # 上次上机时间, 是否过保
     rows = []
     for _, r in df.iterrows():
         vals = r.values
-        # Find key columns by scanning for non-None headers or by position
         row = (
-            safe_str(vals[0]) if len(vals) > 0 else None,    # year_month
-            safe_date(vals[1]) if len(vals) > 1 else None,   # record_date
-            safe_str(vals[3]) if len(vals) > 3 else None,    # shift
-            safe_str(vals[4]) if len(vals) > 4 else None,    # factory
-            safe_str(vals[5]) if len(vals) > 5 else None,    # serial_number
-            safe_str(vals[6]) if len(vals) > 6 else None,    # machine_no
-            safe_str(vals[7]) if len(vals) > 7 else None,    # diagnostician
-            safe_str(vals[8]) if len(vals) > 8 else None,    # repair_person
-            safe_datetime(vals[9]) if len(vals) > 9 else None,   # repair_request_time
-            safe_datetime(vals[10]) if len(vals) > 10 else None, # start_time
-            safe_datetime(vals[11]) if len(vals) > 11 else None, # end_time
-            safe_float(vals[12]) if len(vals) > 12 else None,    # repair_hours
-            safe_float(vals[13]) if len(vals) > 13 else None,    # downtime_hours
-            safe_str(vals[14]) if len(vals) > 14 else None,  # machine_model
-            safe_str(vals[15]) if len(vals) > 15 else None,  # fault_phenomenon
-            None,                                             # fault_description
-            safe_str(vals[17]) if len(vals) > 17 else None,  # material_code
-            safe_str(vals[18]) if len(vals) > 18 else None,  # part_name
-            safe_int(vals[19]) if len(vals) > 19 else None,  # quantity
-            safe_str(vals[20]) if len(vals) > 20 else None,  # machine_on_material
-            safe_str(vals[21]) if len(vals) > 21 else None,  # machine_off_material
-            safe_str(vals[22]) if len(vals) > 22 else None,  # remark
-            safe_str(vals[23]) if len(vals) > 23 else None,  # confirmer
-            safe_str(vals[24]) if len(vals) > 24 else None,  # delivery_record_ref
-            safe_date(vals[26]) if len(vals) > 26 else None, # last_machine_on_time
-            safe_str(vals[27]) if len(vals) > 27 else None,  # is_out_of_warranty
+            safe_str(vals[0]) if len(vals) > 0 else None,    # 年+月
+            safe_date(vals[1]) if len(vals) > 1 else None,   # 日期
+            safe_str(vals[2]) if len(vals) > 2 else None,    # 班次
+            safe_str(vals[3]) if len(vals) > 3 else None,    # 厂房
+            safe_str(vals[4]) if len(vals) > 4 else None,    # 序列号
+            safe_str(vals[5]) if len(vals) > 5 else None,    # 机台号
+            safe_str(vals[6]) if len(vals) > 6 else None,    # 诊断人
+            safe_str(vals[7]) if len(vals) > 7 else None,    # 维修人
+            safe_datetime(vals[8]) if len(vals) > 8 else None,   # 报修时间
+            safe_datetime(vals[9]) if len(vals) > 9 else None,   # 开始时间
+            safe_datetime(vals[10]) if len(vals) > 10 else None, # 结束时间
+            safe_float(vals[11]) if len(vals) > 11 else None,    # 维修工时
+            safe_float(vals[12]) if len(vals) > 12 else None,    # 停机工时
+            safe_str(vals[13]) if len(vals) > 13 else None,  # 机型
+            safe_str(vals[14]) if len(vals) > 14 else None,  # 故障现象
+            None,                                             # 维修描述（Excel 中无此列）
+            safe_str(vals[16]) if len(vals) > 16 else None,  # 料号（跳过 col[15]=空白）
+            safe_str(vals[17]) if len(vals) > 17 else None,  # 配件名称
+            safe_int(vals[18]) if len(vals) > 18 else None,  # 数量
+            safe_str(vals[19]) if len(vals) > 19 else None,  # 上机物料
+            safe_str(vals[20]) if len(vals) > 20 else None,  # 下机物料
+            safe_str(vals[21]) if len(vals) > 21 else None,  # 备注
+            safe_str(vals[22]) if len(vals) > 22 else None,  # 确认人
+            safe_str(vals[23]) if len(vals) > 23 else None,  # 送货记录
+            safe_date(vals[25]) if len(vals) > 25 else None, # 上次上机时间（跳过 col[24]=空白）
+            safe_str(vals[26]) if len(vals) > 26 else None,  # 是否过保
         )
         rows.append(row)
 
@@ -165,35 +192,39 @@ def import_machine_material():
     df.columns = [clean_col(c) for c in df.columns]
     df = df.loc[:, ~df.columns.duplicated()]
 
+    # Excel 列序：年+月, 日期, 班次, 厂房, 序列号, 机台号, 维修人,
+    # 报修时间, 开始时间, 结束时间, 维修工时, 停机工时, 机型, 故障现象, 维修描述,
+    # 料号, 配件名称, 数量, 上机物料, 下机物料, 备注, 确认人, 送货记录,
+    # 上次上机时间, 是否过保
     rows = []
     for _, r in df.iterrows():
         vals = r.values
         row = (
-            safe_str(vals[0]) if len(vals) > 0 else None,
-            safe_date(vals[1]) if len(vals) > 1 else None,
-            safe_str(vals[2]) if len(vals) > 2 else None,    # shift
-            safe_str(vals[3]) if len(vals) > 3 else None,    # factory
-            safe_str(vals[4]) if len(vals) > 4 else None,    # serial_number
-            safe_str(vals[5]) if len(vals) > 5 else None,    # machine_no
-            safe_str(vals[6]) if len(vals) > 6 else None,    # repair_person (no diagnostician in this sheet)
-            safe_datetime(vals[7]) if len(vals) > 7 else None,   # repair_request_time
-            safe_datetime(vals[8]) if len(vals) > 8 else None,   # start_time
-            safe_datetime(vals[9]) if len(vals) > 9 else None,   # end_time
-            safe_float(vals[10]) if len(vals) > 10 else None,    # repair_hours
-            safe_float(vals[11]) if len(vals) > 11 else None,    # downtime_hours
-            safe_str(vals[12]) if len(vals) > 12 else None,  # machine_model
-            safe_str(vals[13]) if len(vals) > 13 else None,  # fault_phenomenon
-            None,                                             # fault_description
-            safe_str(vals[15]) if len(vals) > 15 else None,  # material_code
-            safe_str(vals[16]) if len(vals) > 16 else None,  # part_name
-            safe_int(vals[17]) if len(vals) > 17 else None,  # quantity
-            safe_str(vals[18]) if len(vals) > 18 else None,  # machine_on_material
-            safe_str(vals[19]) if len(vals) > 19 else None,  # machine_off_material
-            safe_str(vals[20]) if len(vals) > 20 else None,  # remark
-            safe_str(vals[21]) if len(vals) > 21 else None,  # confirmer
-            safe_str(vals[22]) if len(vals) > 22 else None,  # delivery_record_ref
-            safe_date(vals[23]) if len(vals) > 23 else None, # last_machine_on_time
-            safe_str(vals[24]) if len(vals) > 24 else None,  # is_out_of_warranty
+            safe_str(vals[0]) if len(vals) > 0 else None,    # 年+月
+            safe_date(vals[1]) if len(vals) > 1 else None,   # 日期
+            safe_str(vals[2]) if len(vals) > 2 else None,    # 班次
+            safe_str(vals[3]) if len(vals) > 3 else None,    # 厂房
+            safe_str(vals[4]) if len(vals) > 4 else None,    # 序列号
+            safe_str(vals[5]) if len(vals) > 5 else None,    # 机台号
+            safe_str(vals[6]) if len(vals) > 6 else None,    # 维修人（此 Sheet 无诊断人列）
+            safe_datetime(vals[7]) if len(vals) > 7 else None,   # 报修时间
+            safe_datetime(vals[8]) if len(vals) > 8 else None,   # 开始时间
+            safe_datetime(vals[9]) if len(vals) > 9 else None,   # 结束时间
+            safe_float(vals[10]) if len(vals) > 10 else None,    # 维修工时
+            safe_float(vals[11]) if len(vals) > 11 else None,    # 停机工时
+            safe_str(vals[12]) if len(vals) > 12 else None,  # 机型
+            safe_str(vals[13]) if len(vals) > 13 else None,  # 故障现象
+            safe_str(vals[14]) if len(vals) > 14 else None,  # 维修描述
+            safe_str(vals[15]) if len(vals) > 15 else None,  # 料号
+            safe_str(vals[16]) if len(vals) > 16 else None,  # 配件名称
+            safe_int(vals[17]) if len(vals) > 17 else None,  # 数量
+            safe_str(vals[18]) if len(vals) > 18 else None,  # 上机物料
+            safe_str(vals[19]) if len(vals) > 19 else None,  # 下机物料
+            safe_str(vals[20]) if len(vals) > 20 else None,  # 备注
+            safe_str(vals[21]) if len(vals) > 21 else None,  # 确认人
+            safe_str(vals[22]) if len(vals) > 22 else None,  # 送货记录
+            safe_date(vals[23]) if len(vals) > 23 else None, # 上次上机时间
+            safe_str(vals[24]) if len(vals) > 24 else None,  # 是否过保
         )
         rows.append(row)
 
