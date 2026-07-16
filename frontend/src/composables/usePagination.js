@@ -9,9 +9,12 @@ export function usePagination(fetchFn, defaultPageSize = 20) {
     pageSize: defaultPageSize
   })
 
+  let lastParams = {}
+
   const totalPages = computed(() => Math.ceil(total.value / queryParams.pageSize))
 
   async function fetchData(extraParams = {}) {
+    lastParams = { ...extraParams }
     loading.value = true
     try {
       const params = { ...queryParams, ...extraParams }
@@ -25,13 +28,13 @@ export function usePagination(fetchFn, defaultPageSize = 20) {
 
   function handlePageChange(page) {
     queryParams.page = page
-    fetchData()
+    fetchData(lastParams)
   }
 
   function handleSizeChange(size) {
     queryParams.pageSize = size
     queryParams.page = 1
-    fetchData()
+    fetchData(lastParams)
   }
 
   function resetPage() {
