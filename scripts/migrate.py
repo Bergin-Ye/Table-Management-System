@@ -173,7 +173,9 @@ def import_original():
             safe_date(vals[25]) if len(vals) > 25 else None, # 上次上机时间（跳过 col[24]=空白）
             safe_str(vals[26]) if len(vals) > 26 else None,  # 是否过保
         )
-        rows.append(row)
+        # 跳过完全空行（Excel 底部无效行）
+        if any([row[1], row[5], row[16], row[19], row[20]]):
+            rows.append(row)
 
     cols = ['year_month','record_date','shift','factory','serial_number','machine_no',
             'diagnostician','repair_person','repair_request_time','start_time','end_time',
@@ -226,7 +228,9 @@ def import_machine_material():
             safe_date(vals[23]) if len(vals) > 23 else None, # 上次上机时间
             safe_str(vals[24]) if len(vals) > 24 else None,  # 是否过保
         )
-        rows.append(row)
+        # 跳过完全空行（Excel 底部无效行）
+        if any([row[1], row[5], row[15], row[18], row[19]]):
+            rows.append(row)
 
     cols = ['year_month','record_date','shift','factory','serial_number','machine_no',
             'repair_person','repair_request_time','start_time','end_time',

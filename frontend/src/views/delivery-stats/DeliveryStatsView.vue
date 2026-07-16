@@ -23,14 +23,15 @@
       @export="handleExport"
     />
 
-    <!-- 合计汇总行 -->
-    <div class="summary-row" v-if="list.length">
-      <span class="summary-label">本页合计</span>
-      <span class="summary-item">送货数量：<b>{{ summary.deliveryQuantity }}</b></span>
-      <span class="summary-item">上机数量：<b>{{ summary.machineOnQuantity }}</b></span>
-      <span class="summary-item">当月返修：<b>{{ summary.monthRepair }}</b></span>
-      <span class="summary-item">超比数量：<b>{{ summary.excessQuantity }}</b></span>
-      <span class="summary-item">超比含税金额：<b>{{ summary.excessAmountWithTax }}</b></span>
+    <!-- 全表合计 -->
+    <div class="summary-row">
+      <span class="summary-label">汇总（全部数据）</span>
+      <span class="summary-item">送货数量：<b>{{ totals.deliveryQuantity }}</b></span>
+      <span class="summary-item">上机数量：<b>{{ totals.machineOnQuantity }}</b></span>
+      <span class="summary-item">当月返修：<b>{{ totals.monthRepair }}</b></span>
+      <span class="summary-item">约定配比数量：<b>{{ totals.agreedRatioQuantity }}</b></span>
+      <span class="summary-item">超比数量：<b>{{ totals.excessQuantity }}</b></span>
+      <span class="summary-item">超比含税金额：<b>{{ totals.excessAmountWithTax.toFixed(2) }}</b></span>
     </div>
 
     <!-- 数据表格 -->
@@ -185,7 +186,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted, computed } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '../../api/delivery-stats'
 import { useCompanyStore } from '../../stores/company'
@@ -239,16 +240,28 @@ const rules = {
   materialCode: [{ required: true, message: '请输入物料编码', trigger: 'blur' }]
 }
 
-const summary = computed(() => {
-  const sum = (field) => list.value.reduce((acc, r) => acc + (Number(r[field]) || 0), 0)
-  return {
-    deliveryQuantity: sum('deliveryQuantity'),
-    machineOnQuantity: sum('machineOnQuantity'),
-    monthRepair: sum('monthRepair'),
-    excessQuantity: sum('excessQuantity'),
-    excessAmountWithTax: sum('excessAmountWithTax')
-  }
+const totals = reactive({
+  deliveryQuantity: 0,
+  machineOnQuantity: 0,
+  monthRepair: 0,
+  agreedRatioQuantity: 0,
+  excessQuantity: 0,
+  excessAmountWithTax: 0
 })
+
+async function fetchTotals() {
+  try {
+    const res = await api.getList({ page: 1, pageSize: 200, companyId: companyStore.currentCompanyId })
+    const all = res.data.list || []
+    const sum = (field) => all.reduce((acc, r) => acc + (Number(r[field]) || 0), 0)
+    totals.deliveryQuantity = sum('deliveryQuantity')
+    totals.machineOnQuantity = sum('machineOnQuantity')
+    totals.monthRepair = sum('monthRepair')
+    totals.agreedRatioQuantity = sum('agreedRatioQuantity')
+    totals.excessQuantity = sum('excessQuantity')
+    totals.excessAmountWithTax = sum('excessAmountWithTax')
+  } catch { /* ignore */ }
+}
 
 function doFetch() {
   return fetchData({
@@ -376,6 +389,7 @@ async function handleSubmit() {
 
 onMounted(() => {
   doFetch()
+  fetchTotals()
 })
 </script>
 

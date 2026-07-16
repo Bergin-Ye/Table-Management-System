@@ -280,7 +280,7 @@ function handleUserCommand(command) {
 .layout-main {
   background: #F5F5F7;
   padding: 24px;
-  overflow-y: auto;
+  overflow: hidden;
   height: 100%;
 }
 </style>
