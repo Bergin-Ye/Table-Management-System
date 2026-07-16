@@ -83,10 +83,28 @@ html, body, #app {
   border-bottom: 1px solid #E5E5EA;
 }
 
-/* 表格水平滚动条固定在可视区域 */
+/* 表格水平滚动条固定在可视区域 + 始终显示 */
 .page-content .el-table__body-wrapper {
   max-height: calc(100vh - 390px);
   overflow-y: auto !important;
+  overflow-x: scroll !important;
+}
+
+/* 滚动条常驻样式 */
+.page-content .el-table__body-wrapper::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.page-content .el-table__body-wrapper::-webkit-scrollbar-track {
+  background: #F5F5F7;
+  border-radius: 4px;
+}
+.page-content .el-table__body-wrapper::-webkit-scrollbar-thumb {
+  background: #C1C1C6;
+  border-radius: 4px;
+}
+.page-content .el-table__body-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #A1A1A6;
 }
 
 /* 搜索表单 */
