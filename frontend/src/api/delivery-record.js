@@ -31,9 +31,7 @@ export function batchDelete(ids) {
 export function importExcel(file) {
   const formData = new FormData()
   formData.append('file', file)
-  return request.post('/delivery-record/import', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  return request.post('/delivery-record/import', formData)
 }
 
 export function exportExcel(params) {
