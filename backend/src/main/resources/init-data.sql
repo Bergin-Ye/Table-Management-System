@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
     `username` VARCHAR(50) NOT NULL UNIQUE,
     `password` VARCHAR(255) NOT NULL,
     `real_name` VARCHAR(100),
+    `role` VARCHAR(20) NOT NULL DEFAULT 'user' COMMENT '角色: admin / user',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -83,6 +84,8 @@ CREATE TABLE IF NOT EXISTS `material` (
     `material_name` VARCHAR(200),
     `spec_model` VARCHAR(300),
     `material_code` VARCHAR(100),
+    `created_by` VARCHAR(50),
+    `updated_by` VARCHAR(50),
     INDEX `idx_m_mcode` (`material_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
@@ -186,6 +189,8 @@ CREATE TABLE IF NOT EXISTS `delivery_stats` (
     `excess_amount_with_tax` DECIMAL(14,4) COMMENT '超比含税金额合计',
     `stat_date` DATE,
     `year_month` VARCHAR(20),
+    `created_by` VARCHAR(50),
+    `updated_by` VARCHAR(50),
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_ds_mcode` (`material_code`),
@@ -217,6 +222,8 @@ CREATE TABLE IF NOT EXISTS `settlement_machine` (
     `remark` TEXT,
     `machine_model` VARCHAR(100),
     `settlement_machine_count` INT,
+    `created_by` VARCHAR(50),
+    `updated_by` VARCHAR(50),
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX `idx_sm_mcode` (`material_code`),
@@ -229,7 +236,9 @@ CREATE TABLE IF NOT EXISTS `machine_detail` (
     `company_id` BIGINT COMMENT '公司ID（多租户预留）',
     `factory` VARCHAR(100),
     `machine_no` VARCHAR(100),
-    `machine_brand` VARCHAR(100)
+    `machine_brand` VARCHAR(100),
+    `created_by` VARCHAR(50),
+    `updated_by` VARCHAR(50)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 开机数量表
@@ -240,7 +249,9 @@ CREATE TABLE IF NOT EXISTS `machine_count` (
     `count` INT,
     `ratio_pct` DECIMAL(6,2),
     `stat_month` VARCHAR(10),
-    `remark` VARCHAR(255)
+    `remark` VARCHAR(255),
+    `created_by` VARCHAR(50),
+    `updated_by` VARCHAR(50)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
