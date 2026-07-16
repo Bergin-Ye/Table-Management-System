@@ -205,7 +205,7 @@ import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
 import { useCrud } from '../../composables/useCrud'
-import { downloadBlob } from '../../utils'
+import { downloadBlob, toSnakeCase } from '../../utils'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchForm from '../../components/SearchForm.vue'
 import ToolBar from '../../components/ToolBar.vue'
@@ -289,7 +289,7 @@ function handleReset() {
 
 function handleSortChange({ prop, order }) {
   if (order) {
-    sortField.value = prop
+    sortField.value = toSnakeCase(prop)
     sortOrder.value = order === 'ascending' ? 'asc' : 'desc'
   } else {
     sortField.value = 'id'

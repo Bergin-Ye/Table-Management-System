@@ -49,3 +49,11 @@ export function getDaysInMonth(yearMonth) {
   const month = parseInt(yearMonth.slice(4, 6))
   return dayjs(`${year}-${String(month).padStart(2, '0')}-01`).daysInMonth()
 }
+
+/**
+ * camelCase 转 snake_case（用于排序字段映射到数据库列名）
+ */
+export function toSnakeCase(str) {
+  if (!str) return 'id'
+  return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)
+}

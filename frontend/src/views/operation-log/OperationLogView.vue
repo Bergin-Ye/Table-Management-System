@@ -50,7 +50,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import * as api from '../../api/operation-log'
-import { formatDateTime } from '../../utils'
+import { formatDateTime, toSnakeCase } from '../../utils'
 import { usePagination } from '../../composables/usePagination'
 import PageHeader from '../../components/PageHeader.vue'
 import SearchForm from '../../components/SearchForm.vue'
@@ -81,7 +81,7 @@ function handleReset() {
 }
 
 function handleSortChange({ prop, order }) {
-  sortField.value = order ? prop : 'id'
+  sortField.value = order ? toSnakeCase(prop) : 'id'
   sortOrder.value = order === 'ascending' ? 'asc' : 'desc'
   queryParams.page = 1; doFetch()
 }
