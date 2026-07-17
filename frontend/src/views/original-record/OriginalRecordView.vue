@@ -64,6 +64,11 @@
       <!-- 上/下机 -->
       <el-table-column prop="machineOnMaterial" label="上机物料号" width="120" show-overflow-tooltip />
       <el-table-column prop="machineOffMaterial" label="下机物料号" width="120" show-overflow-tooltip />
+      <!-- 时间 -->
+      <el-table-column prop="repairRequestTime" label="报修时间" width="140" />
+      <el-table-column prop="startTime" label="开始时间" width="140" />
+      <el-table-column prop="endTime" label="结束时间" width="140" />
+      <el-table-column prop="lastMachineOnTime" label="上次上机时间" width="110" />
       <!-- 工时 & 过保 -->
       <el-table-column prop="repairHours" label="维修工时" width="90" />
       <el-table-column prop="downtimeHours" label="停机工时" width="90" />

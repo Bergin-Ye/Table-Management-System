@@ -229,17 +229,22 @@ public class OriginalRecordService {
     // =============== 过保实时查询 ===============
     public java.util.Map<String, Object> lookupWarranty(String machineOffMaterial) {
         java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
-        if (machineOffMaterial == null || machineOffMaterial.isBlank()) {
+        try {
+            if (machineOffMaterial == null || machineOffMaterial.isBlank()) {
+                result.put("lastMachineOnTime", null);
+                result.put("isOutOfWarranty", "无");
+                return result;
+            }
+            java.time.LocalDate lastTime = mapper.findLastMachineOnTime(machineOffMaterial);
+            result.put("lastMachineOnTime", lastTime != null ? lastTime.toString() : null);
+            if (lastTime != null) {
+                long months = java.time.temporal.ChronoUnit.MONTHS.between(lastTime, java.time.LocalDate.now());
+                result.put("isOutOfWarranty", months >= 6 ? "已过保" : "未过保");
+            } else {
+                result.put("isOutOfWarranty", "无");
+            }
+        } catch (Exception e) {
             result.put("lastMachineOnTime", null);
-            result.put("isOutOfWarranty", "无");
-            return result;
-        }
-        java.time.LocalDate lastTime = mapper.findLastMachineOnTime(machineOffMaterial);
-        result.put("lastMachineOnTime", lastTime != null ? lastTime.toString() : null);
-        if (lastTime != null) {
-            long months = java.time.Duration.between(lastTime.atStartOfDay(), java.time.LocalDate.now().atStartOfDay()).toDays() / 30;
-            result.put("isOutOfWarranty", months >= 6 ? "已过保" : "未过保");
-        } else {
             result.put("isOutOfWarranty", "无");
         }
         return result;
@@ -267,7 +272,7 @@ public class OriginalRecordService {
             record.setLastMachineOnTime(lastTime);
             // 是否过保
             if (lastTime != null) {
-                long months = Duration.between(lastTime.atStartOfDay(), LocalDate.now().atStartOfDay()).toDays() / 30;
+                long months = java.time.temporal.ChronoUnit.MONTHS.between(lastTime, LocalDate.now());
                 record.setIsOutOfWarranty(months >= 6 ? "已过保" : "未过保");
             } else {
                 record.setIsOutOfWarranty("无");

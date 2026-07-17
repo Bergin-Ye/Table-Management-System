@@ -27,13 +27,12 @@
 
     <!-- 全表合计 -->
     <div class="summary-row">
-      <span class="summary-label">汇总（全部数据）</span>
-      <span class="summary-item">送货数量：<b>{{ totals.deliveryQuantity }}</b></span>
-      <span class="summary-item">上机数量：<b>{{ totals.machineOnQuantity }}</b></span>
-      <span class="summary-item">当月返修：<b>{{ totals.monthRepair }}</b></span>
-      <span class="summary-item">约定比例数量：<b>{{ totals.agreedRatioQuantity }}</b></span>
-      <span class="summary-item">超比数量：<b>{{ totals.excessQuantity }}</b></span>
-      <span class="summary-item">超比含税金额：<b>{{ totals.excessAmountWithTax.toFixed(2) }}</b></span>
+      <span class="summary-label">汇总（全部数据 · 万元）</span>
+      <span class="summary-item">送货金额合计：<b>{{ totals.deliveryAmount.toFixed(4) }}</b></span>
+      <span class="summary-item">上机金额合计：<b>{{ totals.machineOnAmount.toFixed(4) }}</b></span>
+      <span class="summary-item">返修金额合计：<b>{{ totals.repairAmount.toFixed(4) }}</b></span>
+      <span class="summary-item">比例内金额合计：<b>{{ totals.agreedRatioAmount.toFixed(4) }}</b></span>
+      <span class="summary-item">超比金额合计：<b>{{ totals.excessAmount.toFixed(4) }}</b></span>
     </div>
 
     <!-- 数据表格 -->
@@ -243,26 +242,27 @@ const rules = {
   materialCode: [{ required: true, message: '请输入物料编码', trigger: 'blur' }]
 }
 
+// 汇总金额 = Σ(含税单价 × 数量) ÷ 1.13 ÷ 10000，单位为万元
+const DIVISOR = 1.13 * 10000
+
 const totals = reactive({
-  deliveryQuantity: 0,
-  machineOnQuantity: 0,
-  monthRepair: 0,
-  agreedRatioQuantity: 0,
-  excessQuantity: 0,
-  excessAmountWithTax: 0
+  deliveryAmount: 0,
+  machineOnAmount: 0,
+  repairAmount: 0,
+  agreedRatioAmount: 0,
+  excessAmount: 0
 })
 
 async function fetchTotals() {
   try {
-    const res = await api.getList({ page: 1, pageSize: 200, companyId: companyStore.currentCompanyId })
+    const res = await api.getList({ page: 1, pageSize: 9999, companyId: companyStore.currentCompanyId })
     const all = res.data.list || []
-    const sum = (field) => all.reduce((acc, r) => acc + (Number(r[field]) || 0), 0)
-    totals.deliveryQuantity = sum('deliveryQuantity')
-    totals.machineOnQuantity = sum('machineOnQuantity')
-    totals.monthRepair = sum('monthRepair')
-    totals.agreedRatioQuantity = sum('agreedRatioQuantity')
-    totals.excessQuantity = sum('excessQuantity')
-    totals.excessAmountWithTax = sum('excessAmountWithTax')
+    const calc = (field) => all.reduce((acc, r) => acc + (Number(r.unitPriceWithTax) || 0) * (Number(r[field]) || 0), 0) / DIVISOR
+    totals.deliveryAmount = calc('deliveryQuantity')
+    totals.machineOnAmount = calc('machineOnQuantity')
+    totals.repairAmount = calc('monthRepair')
+    totals.agreedRatioAmount = calc('agreedRatioQuantity')
+    totals.excessAmount = calc('excessQuantity')
   } catch { /* ignore */ }
 }
 
