@@ -25,11 +25,11 @@ public class DeliveryStats {
     /** 系统名称 */
     @ExcelProperty(value = "系统名称", index = 2)
     private String systemName;
-    /** 零件名称 */
-    @ExcelProperty(value = "零件名称", index = 3)
+    /** 配件名称 */
+    @ExcelProperty(value = "配件名称", index = 3)
     private String partName;
-    /** 单台用量 */
-    @ExcelProperty(value = "单台用量", index = 4)
+    /** 单台机用量 */
+    @ExcelProperty(value = "单台机用量", index = 4)
     private BigDecimal unitUsage;
     /** 比例 */
     @ExcelProperty(value = "比例", index = 5)

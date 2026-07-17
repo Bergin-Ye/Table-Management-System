@@ -38,6 +38,10 @@ export function exportExcel(params) {
   })
 }
 
+export function lookupWarranty(machineOffMaterial) {
+  return request.get('/machine-material/lookup-warranty', { params: { machineOffMaterial } })
+}
+
 export function downloadTemplate() {
   return request.get('/machine-material/template', {
     responseType: 'blob'

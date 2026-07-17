@@ -42,6 +42,10 @@ export function exportExcel(params) {
   })
 }
 
+export function lookupWarranty(machineOffMaterial) {
+  return request.get('/original-record/lookup-warranty', { params: { machineOffMaterial } })
+}
+
 export function downloadTemplate() {
   return request.get('/original-record/template', {
     responseType: 'blob'

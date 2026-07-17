@@ -51,7 +51,7 @@
         <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="占比(%)" prop="ratioPct">
-              <el-input-number v-model="form.ratioPct" :precision="2" :min="0" style="width: 100%" />
+              <el-input-number v-model="form.ratioPct" :precision="2" :min="0" style="width: 100%" disabled />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -67,6 +67,13 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-row :gutter="16">
+          <el-col :span="24">
+            <el-form-item label=" ">
+              <el-checkbox v-model="form.isBaseline">设为基准线（当月开机总数）</el-checkbox>
+            </el-form-item>
+          </el-col>
+        </el-row>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -77,7 +84,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '../../api/machine-count'
 import { useCompanyStore } from '../../stores/company'
@@ -110,7 +117,8 @@ const defaultForm = {
   count: null,
   ratioPct: null,
   statMonth: '',
-  remark: ''
+  remark: '',
+  isBaseline: false
 }
 const form = reactive({ ...defaultForm })
 const rules = {
@@ -140,6 +148,15 @@ function handleSortChange({ prop, order }) {
 }
 
 function resetForm() { Object.assign(form, { ...defaultForm }) }
+
+// 勾选基准线时自动设置占比为100
+watch(() => form.isBaseline, (val) => {
+  if (val) {
+    form.ratioPct = 100
+  } else {
+    form.ratioPct = null
+  }
+})
 function handleAdd() { isEdit.value = false; resetForm(); dialogVisible.value = true }
 async function handleEdit(row) {
   isEdit.value = true

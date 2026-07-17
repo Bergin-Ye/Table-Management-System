@@ -46,7 +46,7 @@ public class MachineMaterial {
     private String machineModel;
     @ExcelProperty(value = "故障现象", index = 13)
     private String faultPhenomenon;
-    @ExcelProperty(value = "故障描述", index = 14)
+    @ExcelProperty(value = "维修描述", index = 14)
     private String faultDescription;
     @ExcelProperty(value = "物料编码", index = 15)
     private String materialCode;

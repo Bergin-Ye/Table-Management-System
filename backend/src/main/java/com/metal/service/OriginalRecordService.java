@@ -226,6 +226,25 @@ public class OriginalRecordService {
         }
     }
 
+    // =============== 过保实时查询 ===============
+    public java.util.Map<String, Object> lookupWarranty(String machineOffMaterial) {
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        if (machineOffMaterial == null || machineOffMaterial.isBlank()) {
+            result.put("lastMachineOnTime", null);
+            result.put("isOutOfWarranty", "无");
+            return result;
+        }
+        java.time.LocalDate lastTime = mapper.findLastMachineOnTime(machineOffMaterial);
+        result.put("lastMachineOnTime", lastTime != null ? lastTime.toString() : null);
+        if (lastTime != null) {
+            long months = java.time.Duration.between(lastTime.atStartOfDay(), java.time.LocalDate.now().atStartOfDay()).toDays() / 30;
+            result.put("isOutOfWarranty", months >= 6 ? "已过保" : "未过保");
+        } else {
+            result.put("isOutOfWarranty", "无");
+        }
+        return result;
+    }
+
     // =============== 自动计算 ===============
     private void applyCalculations(OriginalRecord record) {
         // 年+月

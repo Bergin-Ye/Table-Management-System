@@ -44,6 +44,11 @@ public class MachineMaterialController {
         return Result.ok(service.create(record));
     }
 
+    @GetMapping("/lookup-warranty")
+    public Result<java.util.Map<String, Object>> lookupWarranty(@RequestParam String machineOffMaterial) {
+        return Result.ok(service.lookupWarranty(machineOffMaterial));
+    }
+
     @PutMapping("/{id}")
     public Result<MachineMaterial> update(@PathVariable Long id, @RequestBody MachineMaterial record) {
         record.setId(id);

@@ -48,7 +48,7 @@ public class OriginalRecord {
     private String machineModel;
     @ExcelProperty(value = "故障现象", index = 14)
     private String faultPhenomenon;
-    @ExcelProperty(value = "故障描述", index = 15)
+    @ExcelProperty(value = "维修描述", index = 15)
     private String faultDescription;
     @ExcelProperty(value = "物料编码", index = 16)
     private String materialCode;

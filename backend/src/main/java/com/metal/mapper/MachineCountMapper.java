@@ -49,4 +49,20 @@ public interface MachineCountMapper {
                               @Param("statMonth") String statMonth,
                               @Param("sortField") String sortField,
                               @Param("sortOrder") String sortOrder);
+
+    /** 查找当月基准线（占比100%） */
+    @Select("SELECT * FROM machine_count WHERE stat_month = #{statMonth} AND ratio_pct = 100.00 LIMIT 1")
+    MachineCount findBaselineByMonth(@Param("statMonth") String statMonth);
+
+    /** 查找当月所有记录（按数量降序，用于重算） */
+    @Select("SELECT * FROM machine_count WHERE stat_month = #{statMonth} ORDER BY count DESC")
+    List<MachineCount> findByMonth(@Param("statMonth") String statMonth);
+
+    /** 批量更新占比 */
+    @Update("<script>" +
+            "<foreach collection='list' item='r' separator=';'>" +
+            "UPDATE machine_count SET ratio_pct = #{r.ratioPct} WHERE id = #{r.id}" +
+            "</foreach>" +
+            "</script>")
+    int batchUpdateRatio(@Param("list") List<MachineCount> list);
 }

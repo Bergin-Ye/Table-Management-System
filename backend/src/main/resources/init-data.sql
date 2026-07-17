@@ -65,6 +65,7 @@ CREATE TABLE IF NOT EXISTS `delivery_record` (
     `product_attr` VARCHAR(20) COMMENT '新品/维修品',
     `factory` VARCHAR(100),
     `shipment_no` VARCHAR(100),
+    `remark` TEXT COMMENT '备注',
     `year_month` VARCHAR(20) COMMENT '年+月（格式: FYyyMM，如 FY2607）',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

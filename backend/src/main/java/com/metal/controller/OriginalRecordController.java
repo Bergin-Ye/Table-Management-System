@@ -45,6 +45,11 @@ public class OriginalRecordController {
         return Result.ok(service.copy(id));
     }
 
+    @GetMapping("/lookup-warranty")
+    public Result<java.util.Map<String, Object>> lookupWarranty(@RequestParam String machineOffMaterial) {
+        return Result.ok(service.lookupWarranty(machineOffMaterial));
+    }
+
     @PostMapping
     public Result<OriginalRecord> create(@RequestBody OriginalRecord record) {
         return Result.ok(service.create(record));

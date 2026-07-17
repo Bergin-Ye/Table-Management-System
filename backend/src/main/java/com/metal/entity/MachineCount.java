@@ -25,4 +25,7 @@ public class MachineCount {
     private String createdBy;
     @ExcelIgnore
     private String updatedBy;
+
+    /** 是否为当月基准线（前端复选框，不持久化） */
+    private transient Boolean isBaseline;
 }

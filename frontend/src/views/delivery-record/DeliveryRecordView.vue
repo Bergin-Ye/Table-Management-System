@@ -14,6 +14,7 @@
         <el-select v-model="searchForm.productAttr" placeholder="全部" clearable style="width: 120px">
           <el-option label="新品" value="新品" />
           <el-option label="维修品" value="维修品" />
+          <el-option label="免费" value="免费" />
         </el-select>
       </el-form-item>
       <el-form-item label="厂房">
@@ -78,6 +79,7 @@
       </el-table-column>
       <el-table-column prop="factory" label="厂房" width="90" />
       <el-table-column prop="shipmentNo" label="送货单号" width="130" show-overflow-tooltip />
+      <el-table-column prop="remark" label="备注" width="150" show-overflow-tooltip />
       <el-table-column prop="createdBy" label="创建人" width="80" />
       <el-table-column prop="updatedAt" label="更新时间" width="160" sortable="custom" />
       <el-table-column label="操作" width="170" fixed="right">
@@ -118,27 +120,27 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="类别" prop="category">
-              <el-input v-model="form.category" placeholder="类别" />
+            <el-form-item label="物料编码" prop="materialCode">
+              <el-autocomplete v-model="form.materialCode" :fetch-suggestions="searchMaterials" placeholder="输入料号关键字自动匹配" style="width: 100%" @select="handleMaterialSelect" />
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="20">
+          <el-col :span="12">
+            <el-form-item label="类别" prop="category">
+              <el-input v-model="form.category" placeholder="类别" />
+            </el-form-item>
+          </el-col>
           <el-col :span="12">
             <el-form-item label="物料名称" prop="materialName">
               <el-input v-model="form.materialName" placeholder="物料名称" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
-            <el-form-item label="规格型号" prop="specModel">
-              <el-input v-model="form.specModel" placeholder="规格型号" />
-            </el-form-item>
-          </el-col>
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="物料编码" prop="materialCode">
-              <el-input v-model="form.materialCode" placeholder="物料编码(BYD)" />
+            <el-form-item label="规格型号" prop="specModel">
+              <el-input v-model="form.specModel" placeholder="规格型号" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -170,6 +172,7 @@
               <el-select v-model="form.productAttr" placeholder="请选择" style="width: 100%">
                 <el-option label="新品" value="新品" />
                 <el-option label="维修品" value="维修品" />
+                <el-option label="免费" value="免费" />
               </el-select>
             </el-form-item>
           </el-col>
@@ -181,6 +184,13 @@
           <el-col :span="8">
             <el-form-item label="送货单号" prop="shipmentNo">
               <el-input v-model="form.shipmentNo" placeholder="送货单号" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="20">
+          <el-col :span="24">
+            <el-form-item label="备注" prop="remark">
+              <el-input v-model="form.remark" placeholder="备注" type="textarea" :rows="2" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -205,6 +215,7 @@ import { ElMessage } from 'element-plus'
 import { Camera } from '@element-plus/icons-vue'
 import * as deliveryApi from '../../api/delivery-record'
 import * as ocrApi from '../../api/ocr'
+import { search as searchMaterialsApi } from '../../api/material'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
@@ -234,6 +245,7 @@ const isEdit = ref(false)
 const isCopy = ref(false)
 const submitLoading = ref(false)
 const formRef = ref(null)
+const materialSearchCache = ref([])
 const form = reactive({
   id: null,
   recordDate: '',
@@ -248,6 +260,7 @@ const form = reactive({
   productAttr: '',
   factory: '',
   shipmentNo: '',
+  remark: '',
   companyId: null
 })
 
@@ -317,6 +330,7 @@ function resetForm() {
   form.productAttr = ''
   form.factory = ''
   form.shipmentNo = ''
+  form.remark = ''
   form.companyId = companyStore.currentCompanyId
 }
 
@@ -441,6 +455,27 @@ async function handleOcrUpload() {
     }
   }
   input.click()
+}
+
+// 物料编码模糊搜索
+async function searchMaterials(query, cb) {
+  if (!query || query.length < 1) { cb([]); return }
+  try {
+    const res = await searchMaterialsApi(query)
+    const data = res.data || []
+    materialSearchCache.value = data
+    cb(data.map(m => ({ value: m.materialCode, label: `${m.materialCode} - ${m.materialName || ''}` })))
+  } catch { cb([]) }
+}
+
+function handleMaterialSelect(item) {
+  form.materialCode = item.value
+  const matched = materialSearchCache.value.find(m => m.materialCode === item.value)
+  if (matched) {
+    form.category = matched.category || ''
+    form.materialName = matched.materialName || ''
+    form.specModel = matched.specModel || ''
+  }
 }
 
 onMounted(() => {

@@ -52,8 +52,11 @@ public class DeliveryRecord {
     /** 出厂单号 */
     @ExcelProperty(value = "出厂单号", index = 11)
     private String shipmentNo;
+    /** 备注 */
+    @ExcelProperty(value = "备注", index = 12)
+    private String remark;
     /** 年+月（格式 FYyyMM，如 FY2607） */
-    @ExcelProperty(value = "年+月", index = 12)
+    @ExcelProperty(value = "年+月", index = 13)
     private String yearMonth;
     /** 创建时间（导入导出时忽略） */
     @ExcelIgnore

@@ -31,7 +31,7 @@
       <span class="summary-item">送货数量：<b>{{ totals.deliveryQuantity }}</b></span>
       <span class="summary-item">上机数量：<b>{{ totals.machineOnQuantity }}</b></span>
       <span class="summary-item">当月返修：<b>{{ totals.monthRepair }}</b></span>
-      <span class="summary-item">约定配比数量：<b>{{ totals.agreedRatioQuantity }}</b></span>
+      <span class="summary-item">约定比例数量：<b>{{ totals.agreedRatioQuantity }}</b></span>
       <span class="summary-item">超比数量：<b>{{ totals.excessQuantity }}</b></span>
       <span class="summary-item">超比含税金额：<b>{{ totals.excessAmountWithTax.toFixed(2) }}</b></span>
     </div>
@@ -50,15 +50,15 @@
       <el-table-column prop="category" label="类别" width="100" />
       <el-table-column prop="materialCode" label="物料编码" width="130" show-overflow-tooltip />
       <el-table-column prop="systemName" label="系统名称" width="120" show-overflow-tooltip />
-      <el-table-column prop="partName" label="零件名称" width="120" show-overflow-tooltip />
-      <el-table-column prop="unitUsage" label="单车用量" width="90" />
-      <el-table-column prop="ratio" label="配比" width="80" />
+      <el-table-column prop="partName" label="配件名称" width="120" show-overflow-tooltip />
+      <el-table-column prop="unitUsage" label="单台机用量" width="100" />
+      <el-table-column prop="ratio" label="比例(%)" width="80" />
       <el-table-column prop="unitPriceWithTax" label="含税单价" width="100" />
       <el-table-column prop="machineCount" label="机台数" width="80" />
       <el-table-column prop="deliveryQuantity" label="送货数量" width="90" />
       <el-table-column prop="machineOnQuantity" label="上机数量" width="90" />
-      <el-table-column prop="monthRepair" label="当月维修" width="90" />
-      <el-table-column prop="agreedRatioQuantity" label="约定配比数量" width="120" />
+      <el-table-column prop="monthRepair" label="当月返修" width="90" />
+      <el-table-column prop="agreedRatioQuantity" label="约定比例数量" width="120" />
       <el-table-column prop="excessQuantity" label="超比数量" width="90" />
       <el-table-column prop="excessAmountWithTax" label="超比含税金额" width="120" />
       <el-table-column prop="statDate" label="统计日期" width="110" />
@@ -115,7 +115,7 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="12">
-            <el-form-item label="零件名称" prop="partName">
+            <el-form-item label="配件名称" prop="partName">
               <el-input v-model="form.partName" placeholder="零件名称" />
             </el-form-item>
           </el-col>
@@ -127,12 +127,12 @@
         </el-row>
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="单车用量" prop="unitUsage">
+            <el-form-item label="单台机用量" prop="unitUsage">
               <el-input-number v-model="form.unitUsage" :precision="2" :min="0" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="配比" prop="ratio">
+            <el-form-item label="比例(%)" prop="ratio">
               <el-input-number v-model="form.ratio" :precision="2" :min="0" style="width: 100%" />
             </el-form-item>
           </el-col>
@@ -159,7 +159,7 @@
             </el-form-item>
           </el-col>
           <el-col :span="6">
-            <el-form-item label="当月维修" prop="monthRepair">
+            <el-form-item label="当月返修" prop="monthRepair">
               <el-input-number v-model="form.monthRepair" :min="0" style="width: 100%" />
             </el-form-item>
           </el-col>

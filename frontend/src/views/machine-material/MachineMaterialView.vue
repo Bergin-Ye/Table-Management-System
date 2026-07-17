@@ -117,17 +117,17 @@
         <el-row :gutter="16">
           <el-col :span="8">
             <el-form-item label="报修时间" prop="repairRequestTime">
-              <el-date-picker v-model="form.repairRequestTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+              <el-date-picker v-model="form.repairRequestTime" type="datetime" format="YYYY-MM-DD HH:mm" value-format="YYYY-MM-DD HH:mm" style="width:100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="开始时间" prop="startTime">
-              <el-date-picker v-model="form.startTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+              <el-date-picker v-model="form.startTime" type="datetime" format="YYYY-MM-DD HH:mm" value-format="YYYY-MM-DD HH:mm" style="width:100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="结束时间" prop="endTime">
-              <el-date-picker v-model="form.endTime" type="datetime" value-format="YYYY-MM-DD HH:mm:ss" style="width:100%" />
+              <el-date-picker v-model="form.endTime" type="datetime" format="YYYY-MM-DD HH:mm" value-format="YYYY-MM-DD HH:mm" style="width:100%" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -138,7 +138,7 @@
             </el-form-item>
           </el-col>
           <el-col :span="12">
-            <el-form-item label="故障描述" prop="faultDescription">
+            <el-form-item label="维修描述" prop="faultDescription">
               <el-input v-model="form.faultDescription" />
             </el-form-item>
           </el-col>
@@ -174,6 +174,18 @@
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12">
+            <el-form-item label="上次上机时间">
+              <el-input :model-value="warrantyInfo.lastMachineOnTime || '-'" disabled />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label="是否过保">
+              <el-input :model-value="warrantyInfo.isOutOfWarranty || '-'" disabled />
+            </el-form-item>
+          </el-col>
+        </el-row>
+        <el-row :gutter="16">
+          <el-col :span="12">
             <el-form-item label="送货记录引用" prop="deliveryRecordRef">
               <el-input v-model="form.deliveryRecordRef" />
             </el-form-item>
@@ -194,7 +206,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '../../api/machine-material'
 import { search as searchMaterialsApi } from '../../api/material'
@@ -300,6 +312,29 @@ async function searchMaterials(query, cb) {
 function handleMaterialSelect(item) {
   form.materialCode = item.value
 }
+
+// 过保实时查询
+const warrantyInfo = reactive({ lastMachineOnTime: '', isOutOfWarranty: '' })
+let warrantyTimer = null
+watch(() => form.machineOffMaterial, (newVal) => {
+  if (warrantyTimer) clearTimeout(warrantyTimer)
+  if (!newVal || newVal.trim() === '') {
+    warrantyInfo.lastMachineOnTime = ''
+    warrantyInfo.isOutOfWarranty = ''
+    return
+  }
+  warrantyTimer = setTimeout(async () => {
+    try {
+      const res = await api.lookupWarranty(newVal)
+      const data = res.data
+      warrantyInfo.lastMachineOnTime = data.lastMachineOnTime || ''
+      warrantyInfo.isOutOfWarranty = data.isOutOfWarranty || ''
+    } catch {
+      warrantyInfo.lastMachineOnTime = ''
+      warrantyInfo.isOutOfWarranty = ''
+    }
+  }, 500)
+})
 
 function warrantyTagType(val) {
   if (val === '未过保') return 'success'
