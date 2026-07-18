@@ -3,15 +3,20 @@
     <PageHeader title="开机数量" />
 
     <SearchForm :form="searchForm" @search="handleSearch" @reset="handleReset">
-      <el-form-item label="关键词">
-        <el-input v-model="searchForm.keyword" placeholder="搜索" clearable style="width: 180px" />
+      <el-form-item label="机型">
+        <el-input v-model="searchForm.keyword" placeholder="机型" clearable style="width: 180px" />
       </el-form-item>
       <el-form-item label="统计月份">
-        <el-input v-model="searchForm.statMonth" placeholder="统计月份" clearable style="width: 140px" />
+        <el-date-picker v-model="searchForm.statMonth" type="month" placeholder="选择月份" value-format="YYYY-MM" clearable style="width: 160px" />
       </el-form-item>
     </SearchForm>
 
     <ToolBar :selected-count="selectedRows.length" @add="handleAdd" @batch-delete="batchDelete" @import="handleImport" @export="handleExport" @template="handleTemplateDownload" />
+
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px">
+      <el-date-picker v-model="clearMonth" type="month" placeholder="选择要清除的月份" value-format="YYYY-MM" style="width:180px" />
+      <el-button type="danger" @click="handleClearByMonth">清除当月数据</el-button>
+    </div>
 
     <el-table :data="list" v-loading="loading" border stripe @selection-change="handleSelectionChange" @sort-change="handleSortChange">
       <el-table-column type="selection" width="44" fixed="left" />
@@ -56,7 +61,7 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="统计月份" prop="statMonth">
-              <el-input v-model="form.statMonth" placeholder="统计月份" />
+              <el-date-picker v-model="form.statMonth" type="month" placeholder="选择月份" value-format="YYYY-MM" style="width:100%" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -85,7 +90,7 @@
 
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import * as api from '../../api/machine-count'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
@@ -216,6 +221,19 @@ async function handleTemplateDownload() {
     downloadBlob(response.data, '开机数量模板.xlsx')
     ElMessage.success('模板下载成功')
   } catch { /* error handled */ }
+}
+
+const clearMonth = ref('')
+
+async function handleClearByMonth() {
+  if (!clearMonth.value) { ElMessage.warning('请先选择月份'); return }
+  try {
+    await ElMessageBox.confirm(`确认清除 ${clearMonth.value} 的所有开机数量数据？（基准线不会被删除）`, '二次确认', { type: 'warning' })
+    const res = await api.clearByMonth(clearMonth.value)
+    ElMessage.success(res.data?.msg || '清除成功')
+    clearMonth.value = ''
+    doFetch()
+  } catch { /* cancelled or error */ }
 }
 
 onMounted(() => doFetch())

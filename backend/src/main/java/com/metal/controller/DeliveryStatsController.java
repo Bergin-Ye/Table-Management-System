@@ -87,6 +87,14 @@ public class DeliveryStatsController {
         service.exportExcel(response, companyId, keyword, category, yearMonth);
     }
 
+    @PostMapping("/batch-refresh")
+    public Result<java.util.Map<String, Object>> batchRefresh(@RequestBody java.util.Map<String, String> body) {
+        String yearMonth = body.get("yearMonth");
+        String statMonth = body.get("statMonth");
+        int count = service.batchRefreshByMonth(yearMonth, statMonth);
+        return Result.ok(java.util.Map.of("msg", "已更新 " + count + " 条记录"));
+    }
+
     @GetMapping("/auto-fill")
     public Result<java.util.Map<String, Object>> autoFill(
             @RequestParam String materialCode,

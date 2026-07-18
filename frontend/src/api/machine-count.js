@@ -38,6 +38,10 @@ export function exportExcel(params) {
   })
 }
 
+export function clearByMonth(statMonth) {
+  return request.post('/machine-count/clear-by-month', { statMonth })
+}
+
 export function getByMonth(statMonth) {
   return request.get('/machine-count/by-month', { params: { statMonth } })
 }

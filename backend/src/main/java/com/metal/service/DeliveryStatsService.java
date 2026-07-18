@@ -72,6 +72,13 @@ public class DeliveryStatsService {
 
     @Transactional
     public DeliveryStats create(DeliveryStats record, List<DeliveryStatsDaily> dailies) {
+        // 料号+月份唯一性校验
+        if (record.getMaterialCode() != null && !record.getMaterialCode().isBlank()
+                && record.getYearMonth() != null && !record.getYearMonth().isBlank()) {
+            if (mapper.countByMaterialCodeAndYearMonth(record.getMaterialCode(), record.getYearMonth()) > 0) {
+                throw new BizException("该月已存在料号 '" + record.getMaterialCode() + "' 的统计记录");
+            }
+        }
         applyCalculations(record);
         String user = ServiceHelper.getCurrentUserName();
         record.setCreatedBy(user);
@@ -340,5 +347,65 @@ public class DeliveryStatsService {
         }
 
         return result;
+    }
+
+    /**
+     * 批量刷新指定月份的所有超比统计数据
+     */
+    @Transactional
+    public int batchRefreshByMonth(String yearMonth, String statMonth) {
+        if (yearMonth == null || yearMonth.isBlank()) return 0;
+        List<DeliveryStats> statsList = mapper.findByYearMonth(yearMonth);
+        int count = 0;
+        for (DeliveryStats stats : statsList) {
+            String materialCode = stats.getMaterialCode();
+            if (materialCode == null || materialCode.isBlank()) continue;
+
+            String month = statMonth != null ? statMonth : yearMonth;
+            // 如果 month 是 FY2607 格式，需要转为 yyyy-MM
+            if (month != null && month.startsWith("FY")) {
+                try {
+                    int fyYear = Integer.parseInt(month.substring(2, 4));
+                    int fyMonth = Integer.parseInt(month.substring(4, 6));
+                    month = String.format("20%02d-%02d", fyYear, fyMonth);
+                } catch (Exception ignored) {}
+            }
+
+            int deliveryQty = deliveryRecordMapper.countByMaterialCodeAndMonth(materialCode, month);
+            int machineOnQty = originalRecordMapper.countByMaterialCodeAndMonth(materialCode, month);
+            int repairQty = originalRecordMapper.countRepairByMaterialCodeAndMonth(materialCode, month);
+
+            stats.setDeliveryQuantity(deliveryQty);
+            stats.setMachineOnQuantity(machineOnQty);
+            stats.setMonthRepair(repairQty);
+
+            applyCalculations(stats);
+            mapper.update(stats);
+
+            // 刷新每日明细
+            dailyMapper.deleteByStatId(stats.getId());
+            java.util.List<java.util.Map<String, Object>> dailyCounts =
+                    deliveryRecordMapper.countDailyByMaterialCodeAndMonth(materialCode, month);
+            java.util.Map<Integer, Integer> dayMap = new java.util.HashMap<>();
+            for (java.util.Map<String, Object> row : dailyCounts) {
+                Number day = (Number) row.get("day");
+                Number cnt = (Number) row.get("cnt");
+                if (day != null && cnt != null) dayMap.put(day.intValue(), cnt.intValue());
+            }
+            try {
+                int daysInMonth = java.time.YearMonth.parse(month).lengthOfMonth();
+                java.util.List<DeliveryStatsDaily> dailies = new java.util.ArrayList<>();
+                for (int d = 1; d <= daysInMonth; d++) {
+                    DeliveryStatsDaily daily = new DeliveryStatsDaily();
+                    daily.setStatId(stats.getId());
+                    daily.setDayNumber(d);
+                    daily.setValue(java.math.BigDecimal.valueOf(dayMap.getOrDefault(d, 0)));
+                    dailies.add(daily);
+                }
+                if (!dailies.isEmpty()) dailyMapper.batchInsert(dailies);
+            } catch (Exception ignored) {}
+            count++;
+        }
+        return count;
     }
 }

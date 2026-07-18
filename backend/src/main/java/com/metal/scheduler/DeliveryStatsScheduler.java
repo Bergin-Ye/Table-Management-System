@@ -32,9 +32,9 @@ public class DeliveryStatsScheduler {
     private static final DateTimeFormatter YM_FMT = DateTimeFormatter.ofPattern("'FY'yyMM");
 
     /**
-     * 每小时整点刷新当前月份的超比统计数据
+     * 每天凌晨3点刷新当前月份的超比统计数据
      */
-    @Scheduled(cron = "0 0 * * * *")
+    @Scheduled(cron = "0 0 3 * * *")
     public void refreshCurrentMonthStats() {
         LocalDate now = LocalDate.now();
         String currentMonth = now.format(DateTimeFormatter.ofPattern("yyyy-MM"));

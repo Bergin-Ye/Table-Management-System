@@ -47,9 +47,15 @@
       <el-table-column prop="machineOnMaterial" label="上机物料" width="110" show-overflow-tooltip />
       <el-table-column prop="machineOffMaterial" label="下机物料" width="110" show-overflow-tooltip />
       <!-- 时间 -->
-      <el-table-column prop="repairRequestTime" label="报修时间" width="140" />
-      <el-table-column prop="startTime" label="开始时间" width="140" />
-      <el-table-column prop="endTime" label="结束时间" width="140" />
+      <el-table-column label="报修时间" width="100">
+        <template #default="{ row }">{{ formatTime(row.repairRequestTime) }}</template>
+      </el-table-column>
+      <el-table-column label="开始时间" width="100">
+        <template #default="{ row }">{{ formatTime(row.startTime) }}</template>
+      </el-table-column>
+      <el-table-column label="结束时间" width="100">
+        <template #default="{ row }">{{ formatTime(row.endTime) }}</template>
+      </el-table-column>
       <el-table-column prop="lastMachineOnTime" label="上次上机时间" width="110" />
       <el-table-column prop="isOutOfWarranty" label="是否过保" width="90">
         <template #default="{ row }">
@@ -122,17 +128,17 @@
         <el-row :gutter="16">
           <el-col :span="8">
             <el-form-item label="报修时间" prop="repairRequestTime">
-              <el-date-picker v-model="form.repairRequestTime" type="datetime" format="YYYY-MM-DD HH:mm" value-format="YYYY-MM-DD HH:mm" style="width:100%" />
+              <el-time-picker v-model="form.repairRequestTime" format="HH:mm" value-format="HH:mm" placeholder="选择时间" style="width:100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="开始时间" prop="startTime">
-              <el-date-picker v-model="form.startTime" type="datetime" format="YYYY-MM-DD HH:mm" value-format="YYYY-MM-DD HH:mm" style="width:100%" />
+              <el-time-picker v-model="form.startTime" format="HH:mm" value-format="HH:mm" placeholder="选择时间" style="width:100%" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="结束时间" prop="endTime">
-              <el-date-picker v-model="form.endTime" type="datetime" format="YYYY-MM-DD HH:mm" value-format="YYYY-MM-DD HH:mm" style="width:100%" />
+              <el-time-picker v-model="form.endTime" format="HH:mm" value-format="HH:mm" placeholder="选择时间" style="width:100%" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -281,13 +287,22 @@ function resetForm() { Object.assign(form, { ...defaultForm }) }
 function handleAdd() { isEdit.value = false; isCopy.value = false; resetForm(); dialogVisible.value = true }
 async function handleEdit(row) {
   isEdit.value = true; isCopy.value = false
-  const res = await api.getDetail(row.id); Object.assign(form, res.data)
+  const res = await api.getDetail(row.id)
+  const d = { ...res.data,
+    repairRequestTime: extractTime(res.data.repairRequestTime),
+    startTime: extractTime(res.data.startTime),
+    endTime: extractTime(res.data.endTime) }
+  Object.assign(form, d)
   dialogVisible.value = true
 }
 async function handleCopy(row) {
   isEdit.value = false; isCopy.value = true
   const res = await api.getDetail(row.id)
-  Object.assign(form, { ...res.data, id: null })
+  const d = { ...res.data, id: null,
+    repairRequestTime: extractTime(res.data.repairRequestTime),
+    startTime: extractTime(res.data.startTime),
+    endTime: extractTime(res.data.endTime) }
+  Object.assign(form, d)
   dialogVisible.value = true
 }
 
@@ -296,13 +311,29 @@ async function handleSubmit() {
   if (!valid) return
   submitLoading.value = true
   try {
-    const data = { ...form, companyId: companyStore.currentCompanyId }
+    const dateStr = form.recordDate || ''
+    const data = { ...form, companyId: companyStore.currentCompanyId,
+      repairRequestTime: form.repairRequestTime ? dateStr + ' ' + form.repairRequestTime : '',
+      startTime: form.startTime ? dateStr + ' ' + form.startTime : '',
+      endTime: form.endTime ? dateStr + ' ' + form.endTime : '' }
     delete data.id
     if (isEdit.value) await api.update(form.id, data)
     else await api.create(data)
     ElMessage.success(isEdit.value ? '修改成功' : '新增成功')
     dialogVisible.value = false; doFetch()
   } finally { submitLoading.value = false }
+}
+
+function extractTime(dt) {
+  if (!dt) return ''
+  const m = dt.match(/(\d{2}:\d{2})/)
+  return m ? m[1] : ''
+}
+
+function formatTime(dt) {
+  if (!dt) return ''
+  const m = dt.match(/(\d{2}:\d{2})/)
+  return m ? m[1] : dt
 }
 
 async function searchMaterials(query, cb) {

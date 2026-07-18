@@ -77,6 +77,13 @@ public class MachineCountController {
         return Result.ok(service.findByMonth(statMonth));
     }
 
+    @PostMapping("/clear-by-month")
+    public Result<java.util.Map<String, Object>> clearByMonth(@RequestBody java.util.Map<String, String> body) {
+        String statMonth = body.get("statMonth");
+        int count = service.clearByMonth(statMonth);
+        return Result.ok(java.util.Map.of("msg", "已清除 " + statMonth + " 月份数据 " + count + " 条（基准线保留）"));
+    }
+
     @GetMapping("/template")
     public void downloadTemplate(HttpServletResponse response) {
         service.downloadTemplate(response);

@@ -32,8 +32,16 @@
       <el-table-column prop="systemName" label="系统名称" width="120" show-overflow-tooltip />
       <el-table-column prop="partName" label="配件名称" width="140" show-overflow-tooltip />
       <el-table-column prop="unitUsage" label="单台机用量" width="100" />
-      <el-table-column prop="ratio" label="比例" width="80" />
-      <el-table-column prop="unitPriceWithTax" label="含税单价" width="110" />
+      <el-table-column label="比例" width="80">
+        <template #default="{ row }">
+          {{ row.ratio != null ? (row.ratio * 100).toFixed(4) + '%' : '' }}
+        </template>
+      </el-table-column>
+      <el-table-column label="含税单价" width="110">
+        <template #default="{ row }">
+          {{ row.unitPriceWithTax != null ? Number(row.unitPriceWithTax).toFixed(2) : '' }}
+        </template>
+      </el-table-column>
       <el-table-column prop="createdBy" label="创建人" width="100" />
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
@@ -95,7 +103,7 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="比例" prop="ratio">
+            <el-form-item label="比例(%)" prop="ratio">
               <el-input-number v-model="form.ratio" :precision="4" :min="0" style="width: 100%" />
             </el-form-item>
           </el-col>
@@ -183,13 +191,16 @@ function resetForm() { Object.assign(form, { ...defaultForm }) }
 function handleAdd() { isEdit.value = false; isCopy.value = false; resetForm(); dialogVisible.value = true }
 async function handleEdit(row) {
   isEdit.value = true; isCopy.value = false
-  const res = await api.getDetail(row.id); Object.assign(form, res.data)
+  const res = await api.getDetail(row.id)
+  const d = { ...res.data, ratio: res.data.ratio != null ? res.data.ratio * 100 : null }
+  Object.assign(form, d)
   dialogVisible.value = true
 }
 async function handleCopy(row) {
   isEdit.value = false; isCopy.value = true
   const res = await api.getDetail(row.id)
-  Object.assign(form, { ...res.data, id: null })
+  const d = { ...res.data, id: null, ratio: res.data.ratio != null ? res.data.ratio * 100 : null }
+  Object.assign(form, d)
   dialogVisible.value = true
 }
 
@@ -198,7 +209,8 @@ async function handleSubmit() {
   if (!valid) return
   submitLoading.value = true
   try {
-    const data = { ...form, companyId: companyStore.currentCompanyId }
+    const data = { ...form, companyId: companyStore.currentCompanyId,
+      ratio: form.ratio != null ? form.ratio / 100 : null }
     delete data.id
     if (isEdit.value) await api.update(form.id, data)
     else await api.create(data)

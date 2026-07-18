@@ -42,6 +42,10 @@ export function exportExcel(params) {
   })
 }
 
+export function batchRefresh(yearMonth) {
+  return request.post('/delivery-stats/batch-refresh', { yearMonth, statMonth: yearMonth })
+}
+
 export function autoFill(materialCode, statDate) {
   return request.get('/delivery-stats/auto-fill', { params: { materialCode, statDate } })
 }

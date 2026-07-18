@@ -48,6 +48,12 @@ public class MachineCountService {
         return mapper.findByMonth(statMonth);
     }
 
+    @Transactional
+    public int clearByMonth(String statMonth) {
+        if (statMonth == null || statMonth.isBlank()) throw new BizException("月份不能为空");
+        return mapper.deleteByMonthExceptBaseline(statMonth);
+    }
+
     public MachineCount getById(Long id) {
         MachineCount r = mapper.findById(id);
         if (r == null) throw new BizException("记录不存在");

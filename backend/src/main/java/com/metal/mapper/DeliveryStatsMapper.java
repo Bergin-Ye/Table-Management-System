@@ -67,4 +67,7 @@ public interface DeliveryStatsMapper {
 
     @Select("SELECT * FROM delivery_stats WHERE `year_month` = #{yearMonth}")
     List<DeliveryStats> findByYearMonth(@Param("yearMonth") String yearMonth);
+
+    @Select("SELECT COUNT(*) FROM delivery_stats WHERE material_code = #{materialCode} AND `year_month` = #{yearMonth}")
+    int countByMaterialCodeAndYearMonth(@Param("materialCode") String materialCode, @Param("yearMonth") String yearMonth);
 }

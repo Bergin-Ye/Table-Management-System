@@ -25,9 +25,10 @@ public class SettlementMachineController {
             @RequestParam(required = false) Long companyId,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String machineModel,
+            @RequestParam(required = false) String statMonth,
             @RequestParam(defaultValue = "id") String sortField,
             @RequestParam(defaultValue = "desc") String sortOrder) {
-        return Result.ok(service.query(page, pageSize, companyId, keyword, machineModel, sortField, sortOrder));
+        return Result.ok(service.query(page, pageSize, companyId, keyword, machineModel, statMonth, sortField, sortOrder));
     }
 
     @GetMapping("/{id}")

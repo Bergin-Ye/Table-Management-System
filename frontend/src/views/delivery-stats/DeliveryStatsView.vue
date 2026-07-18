@@ -25,14 +25,21 @@
       @template="handleTemplateDownload"
     />
 
+    <div style="margin-bottom:12px;display:flex;align-items:center;gap:12px">
+      <el-date-picker v-model="refreshMonth" type="month" placeholder="选择要更新的月份" value-format="YYYY-MM" style="width:180px" />
+      <el-button type="warning" @click="handleBatchRefresh">更新当月数据</el-button>
+    </div>
+
     <!-- 全表合计 -->
     <div class="summary-row">
-      <span class="summary-label">汇总（全部数据 · 万元）</span>
-      <span class="summary-item">送货金额合计：<b>{{ totals.deliveryAmount.toFixed(4) }}</b></span>
-      <span class="summary-item">上机金额合计：<b>{{ totals.machineOnAmount.toFixed(4) }}</b></span>
-      <span class="summary-item">返修金额合计：<b>{{ totals.repairAmount.toFixed(4) }}</b></span>
-      <span class="summary-item">比例内金额合计：<b>{{ totals.agreedRatioAmount.toFixed(4) }}</b></span>
-      <span class="summary-item">超比金额合计：<b>{{ totals.excessAmount.toFixed(4) }}</b></span>
+      <span class="summary-label">汇总（万元）</span>
+      <el-date-picker v-model="summaryMonth" type="month" placeholder="选择月份" value-format="YYYY-MM" clearable style="width:160px" @change="fetchTotals" />
+      <span class="summary-item">送货金额合计：<b>{{ totals.deliveryAmount.toFixed(2) }}</b></span>
+      <span class="summary-item">上机金额合计：<b>{{ totals.machineOnAmount.toFixed(2) }}</b></span>
+      <span class="summary-item">返修金额合计：<b>{{ totals.repairAmount.toFixed(2) }}</b></span>
+      <span class="summary-item">比例内金额合计：<b>{{ totals.agreedRatioAmount.toFixed(2) }}</b></span>
+      <span class="summary-item">超比金额合计：<b>{{ totals.excessAmount.toFixed(2) }}</b></span>
+      <span class="summary-item">超比含税总额：<b>{{ totals.excessTaxAmount.toFixed(2) }}</b></span>
     </div>
 
     <!-- 数据表格 -->
@@ -47,7 +54,7 @@
       <el-table-column type="selection" width="44" fixed="left" />
       <el-table-column prop="id" label="ID" width="64" />
       <el-table-column prop="category" label="类别" width="100" />
-      <el-table-column prop="materialCode" label="物料编码" width="130" show-overflow-tooltip />
+      <el-table-column prop="materialCode" label="料号" width="130" show-overflow-tooltip />
       <el-table-column prop="systemName" label="系统名称" width="120" show-overflow-tooltip />
       <el-table-column prop="partName" label="配件名称" width="120" show-overflow-tooltip />
       <el-table-column prop="unitUsage" label="单台机用量" width="100" />
@@ -97,11 +104,6 @@
         <!-- 主表单 - 3列布局 -->
         <el-row :gutter="20">
           <el-col :span="8">
-            <el-form-item label="类别" prop="category">
-              <el-input v-model="form.category" placeholder="类别" />
-            </el-form-item>
-          </el-col>
-          <el-col :span="8">
             <el-form-item label="料号" prop="materialCode">
               <el-autocomplete v-model="form.materialCode" :fetch-suggestions="searchMaterial156" placeholder="输入料号自动匹配156项" style="width:100%" @select="handleMaterialSelect" />
             </el-form-item>
@@ -109,6 +111,11 @@
           <el-col :span="8">
             <el-form-item label="系统名称" prop="systemName">
               <el-autocomplete v-model="form.systemName" :fetch-suggestions="searchBySystemName" placeholder="输入系统名称自动匹配156项" style="width:100%" @select="handleSystemNameSelect" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="类别" prop="category">
+              <el-input v-model="form.category" placeholder="类别" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -144,7 +151,7 @@
         <el-row :gutter="20">
           <el-col :span="6">
             <el-form-item label="机台数" prop="machineCount">
-              <el-input-number v-model="form.machineCount" :min="0" style="width: 100%" />
+              <el-input-number v-model="form.machineCount" :min="0" :disabled="true" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="6">
@@ -174,7 +181,7 @@
           </el-table-column>
           <el-table-column label="数值（自动统计）">
             <template #default="{ row }">
-              {{ row.value }}
+              <span :style="{ color: row.value > 0 ? 'red' : '' }">{{ row.value }}</span>
             </template>
           </el-table-column>
         </el-table>
@@ -246,24 +253,31 @@ const rules = {
 // 汇总金额 = Σ(含税单价 × 数量) ÷ 1.13 ÷ 10000，单位为万元
 const DIVISOR = 1.13 * 10000
 
+const summaryMonth = ref('')
 const totals = reactive({
   deliveryAmount: 0,
   machineOnAmount: 0,
   repairAmount: 0,
   agreedRatioAmount: 0,
-  excessAmount: 0
+  excessAmount: 0,
+  excessTaxAmount: 0
 })
 
 async function fetchTotals() {
   try {
-    const res = await api.getList({ page: 1, pageSize: 9999, companyId: companyStore.currentCompanyId })
+    const params = { page: 1, pageSize: 9999, companyId: companyStore.currentCompanyId }
+    if (summaryMonth.value) params.yearMonth = summaryMonth.value
+    const res = await api.getList(params)
     const all = res.data.list || []
     const calc = (field) => all.reduce((acc, r) => acc + (Number(r.unitPriceWithTax) || 0) * (Number(r[field]) || 0), 0) / DIVISOR
     totals.deliveryAmount = calc('deliveryQuantity')
     totals.machineOnAmount = calc('machineOnQuantity')
     totals.repairAmount = calc('monthRepair')
     totals.agreedRatioAmount = calc('agreedRatioQuantity')
+    // 超比金额合计 = Σ(含税单价 × 超比数量) ÷ 1.13 ÷ 10000
     totals.excessAmount = calc('excessQuantity')
+    // 超比含税总额 = Σ(超比含税金额) ÷ 10000
+    totals.excessTaxAmount = all.reduce((acc, r) => acc + (Number(r.excessAmountWithTax) || 0), 0) / 10000
   } catch { /* ignore */ }
 }
 
@@ -487,7 +501,22 @@ async function handleSubmit() {
   }
 }
 
+const refreshMonth = ref('')
+
+async function handleBatchRefresh() {
+  if (!refreshMonth.value) { ElMessage.warning('请先选择要更新的月份'); return }
+  try {
+    const res = await api.batchRefresh(refreshMonth.value)
+    ElMessage.success(res.data?.msg || '更新完成')
+    doFetch()
+    fetchTotals()
+  } catch { /* error handled */ }
+}
+
+// 默认汇总月份为当前月份
 onMounted(() => {
+  const now = new Date()
+  summaryMonth.value = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0')
   doFetch()
   fetchTotals()
 })

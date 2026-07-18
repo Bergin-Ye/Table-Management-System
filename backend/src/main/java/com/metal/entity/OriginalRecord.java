@@ -4,6 +4,7 @@ import com.alibaba.excel.annotation.ExcelIgnore;
 import com.alibaba.excel.annotation.ExcelProperty;
 import com.alibaba.excel.annotation.format.DateTimeFormat;
 import lombok.Data;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -31,12 +32,15 @@ public class OriginalRecord {
     private String diagnostician;
     @ExcelProperty(value = "维修人", index = 7)
     private String repairPerson;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     @ExcelProperty(value = "报修时间", index = 8)
     @DateTimeFormat("yyyy-MM-dd HH:mm:ss")
     private LocalDateTime repairRequestTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     @ExcelProperty(value = "开始时间", index = 9)
     @DateTimeFormat("yyyy-MM-dd HH:mm:ss")
     private LocalDateTime startTime;
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm")
     @ExcelProperty(value = "结束时间", index = 10)
     @DateTimeFormat("yyyy-MM-dd HH:mm:ss")
     private LocalDateTime endTime;

@@ -36,11 +36,12 @@ public class SettlementMachineService {
     private com.metal.mapper.BaseMaterial156Mapper baseMaterial156Mapper;
 
     public PageResult<SettlementMachine> query(int page, int pageSize, Long companyId, String keyword,
-                                                String machineModel, String sortField, String sortOrder) {
+                                                String machineModel, String statMonth,
+                                                String sortField, String sortOrder) {
         sortField = ServiceHelper.sanitizeSortField(sortField, "id");
         sortOrder = ServiceHelper.sanitizeSortOrder(sortOrder);
         PageHelper.startPage(page, pageSize);
-        List<SettlementMachine> list = mapper.search(companyId, keyword, machineModel, sortField, sortOrder);
+        List<SettlementMachine> list = mapper.search(companyId, keyword, machineModel, statMonth, sortField, sortOrder);
         PageInfo<SettlementMachine> pageInfo = new PageInfo<>(list);
         return new PageResult<>(pageInfo.getTotal(), page, pageSize, list);
     }
@@ -167,7 +168,7 @@ public class SettlementMachineService {
     public void exportExcel(HttpServletResponse response, Long companyId, String keyword, String machineModel) {
         try {
             PageHelper.startPage(1, 0);
-            List<SettlementMachine> list = mapper.search(companyId, keyword, machineModel, "id", "desc");
+            List<SettlementMachine> list = mapper.search(companyId, keyword, machineModel, null, "id", "desc");
 
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setCharacterEncoding("UTF-8");

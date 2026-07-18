@@ -9,6 +9,9 @@
       <el-form-item label="机型">
         <el-input v-model="searchForm.machineModel" placeholder="机型" clearable style="width: 160px" />
       </el-form-item>
+      <el-form-item label="统计月份">
+        <el-date-picker v-model="searchForm.statMonth" type="month" placeholder="选择月份" value-format="YYYY-MM" clearable style="width: 160px" />
+      </el-form-item>
     </SearchForm>
 
     <ToolBar :selected-count="selectedRows.length" @add="handleAdd" @batch-delete="batchDelete" @import="handleImport" @export="handleExport" @template="handleTemplateDownload" />
@@ -167,7 +170,7 @@ const { list, total, loading, queryParams, fetchData, handlePageChange, handleSi
 const { selectedRows, handleSelectionChange } = useTableSelection()
 const { handleDelete, handleBatchDelete } = useCrud(api, doFetch)
 
-const searchForm = reactive({ keyword: '', machineModel: '' })
+const searchForm = reactive({ keyword: '', machineModel: '', statMonth: '' })
 const dialogVisible = ref(false)
 const isEdit = ref(false)
 const isCopy = ref(false)
@@ -208,7 +211,7 @@ function doFetch() {
 
 function handleSearch() { queryParams.page = 1; doFetch() }
 function handleReset() {
-  Object.assign(searchForm, { keyword: '', machineModel: '' })
+  Object.assign(searchForm, { keyword: '', machineModel: '', statMonth: '' })
   queryParams.page = 1; doFetch()
 }
 

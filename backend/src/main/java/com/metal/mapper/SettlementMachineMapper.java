@@ -48,10 +48,12 @@ public interface SettlementMachineMapper {
             "OR category LIKE CONCAT('%',#{keyword},'%') OR machine_model LIKE CONCAT('%',#{keyword},'%')) " +
             "</if>" +
             "<if test='machineModel != null and machineModel != \"\"'>AND machine_model = #{machineModel}</if> " +
+            "<if test='statMonth != null and statMonth != \"\"'>AND stat_month = #{statMonth}</if> " +
             "ORDER BY ${sortField} ${sortOrder} " +
             "</script>")
     List<SettlementMachine> search(@Param("companyId") Long companyId, @Param("keyword") String keyword,
                                    @Param("machineModel") String machineModel,
+                                   @Param("statMonth") String statMonth,
                                    @Param("sortField") String sortField,
                                    @Param("sortOrder") String sortOrder);
 
