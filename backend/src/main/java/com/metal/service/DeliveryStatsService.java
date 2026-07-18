@@ -152,7 +152,7 @@ public class DeliveryStatsService {
                 public void invoke(DeliveryStats data, AnalysisContext ctx) {
                     counts[0]++;
                     try {
-                        applyCalculations(data);
+                        // 导入时不自动重算，保留Excel原始数据
                         String user = ServiceHelper.getCurrentUserName();
                         data.setCompanyId(companyId != null ? companyId : 1L);
                         data.setCreatedBy(user);
