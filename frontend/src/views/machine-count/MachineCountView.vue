@@ -232,7 +232,7 @@ async function handleClearByMonth() {
   } catch { return }
   try {
     const res = await api.clearByMonth(clearMonth.value)
-    ElMessage.success(res.msg || '清除成功')
+    ElMessage.success(res.data || '清除成功')
     clearMonth.value = ''
     doFetch()
   } catch { /* interceptor already shows error */ }
