@@ -46,6 +46,10 @@ export function lookupWarranty(machineOffMaterial) {
   return request.get('/original-record/lookup-warranty', { params: { machineOffMaterial } })
 }
 
+export function lookup156(materialCode) {
+  return request.get('/original-record/lookup-156', { params: { materialCode } })
+}
+
 export function downloadTemplate() {
   return request.get('/original-record/template', {
     responseType: 'blob'

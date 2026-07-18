@@ -40,6 +40,15 @@ public class DeliveryStatsService {
     @Autowired
     private DeliveryStatsDailyMapper dailyMapper;
 
+    @Autowired
+    private com.metal.mapper.BaseMaterial156Mapper baseMaterial156Mapper;
+    @Autowired
+    private com.metal.mapper.DeliveryRecordMapper deliveryRecordMapper;
+    @Autowired
+    private com.metal.mapper.OriginalRecordMapper originalRecordMapper;
+    @Autowired
+    private com.metal.mapper.SettlementMachineMapper settlementMachineMapper;
+
     public PageResult<DeliveryStats> query(int page, int pageSize, Long companyId, String keyword,
                                             String category, String yearMonth,
                                             String sortField, String sortOrder) {
@@ -252,13 +261,84 @@ public class DeliveryStatsService {
         int delivery = record.getDeliveryQuantity() != null ? record.getDeliveryQuantity() : 0;
         int repair = record.getMonthRepair() != null ? record.getMonthRepair() : 0;
         record.setExcessQuantity(BigDecimal.valueOf(delivery - repair));
-        // 超比含税金额合计 = 超比数量 × 含税单价
+        // 超比含税金额合计 = (含税单价 × 超比数量) / 1.13
         if (record.getExcessQuantity() != null && record.getUnitPriceWithTax() != null) {
             record.setExcessAmountWithTax(
-                    record.getExcessQuantity()
-                            .multiply(record.getUnitPriceWithTax())
-                            .setScale(4, RoundingMode.HALF_UP)
+                    record.getUnitPriceWithTax()
+                            .multiply(record.getExcessQuantity())
+                            .divide(BigDecimal.valueOf(1.13), 4, RoundingMode.HALF_UP)
             );
         }
+    }
+
+    /**
+     * 根据料号+日期自动查询各字段的填充值
+     */
+    public java.util.Map<String, Object> autoFill(String materialCode, String statDate) {
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        if (materialCode == null || materialCode.isBlank()) return result;
+
+        // 1. 从156项表查询基础信息
+        com.metal.entity.BaseMaterial156 item = baseMaterial156Mapper.findByMaterialCode(materialCode);
+        if (item != null) {
+            java.util.Map<String, Object> from156 = new java.util.LinkedHashMap<>();
+            from156.put("category", item.getCategory());
+            from156.put("systemName", item.getSystemName());
+            from156.put("partName", item.getPartName());
+            from156.put("unitUsage", item.getUnitUsage());
+            from156.put("ratio", item.getRatio());
+            from156.put("unitPriceWithTax", item.getUnitPriceWithTax());
+            result.put("from156", from156);
+        }
+
+        // 2. 获取月份
+        String month = "";
+        if (statDate != null && !statDate.isBlank()) {
+            try {
+                java.time.LocalDate date = java.time.LocalDate.parse(statDate);
+                month = date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+            } catch (Exception ignored) {}
+        }
+
+        if (!month.isEmpty()) {
+            // 3. 机台数（来自结算机台数）
+            Integer mc = settlementMachineMapper.sumMachineCountByMaterialCodeAndMonth(materialCode, month);
+            result.put("machineCount", mc != null ? mc : 0);
+
+            // 4. 送货数量
+            int dq = deliveryRecordMapper.countByMaterialCodeAndMonth(materialCode, month);
+            result.put("deliveryQuantity", dq);
+
+            // 5. 上机数量
+            int moq = originalRecordMapper.countByMaterialCodeAndMonth(materialCode, month);
+            result.put("machineOnQuantity", moq);
+
+            // 6. 当月返修（未过保）
+            int mr = originalRecordMapper.countRepairByMaterialCodeAndMonth(materialCode, month);
+            result.put("monthRepair", mr);
+
+            // 7. 每日送货明细
+            java.util.List<java.util.Map<String, Object>> dailyCounts =
+                    deliveryRecordMapper.countDailyByMaterialCodeAndMonth(materialCode, month);
+            java.util.Map<Integer, Integer> dayMap = new java.util.HashMap<>();
+            for (java.util.Map<String, Object> row : dailyCounts) {
+                Number day = (Number) row.get("day");
+                Number cnt = (Number) row.get("cnt");
+                if (day != null && cnt != null) {
+                    dayMap.put(day.intValue(), cnt.intValue());
+                }
+            }
+            int daysInMonth = java.time.YearMonth.parse(month).lengthOfMonth();
+            java.util.List<java.util.Map<String, Object>> dailies = new java.util.ArrayList<>();
+            for (int d = 1; d <= daysInMonth; d++) {
+                java.util.Map<String, Object> daily = new java.util.LinkedHashMap<>();
+                daily.put("day", d);
+                daily.put("count", dayMap.getOrDefault(d, 0));
+                dailies.add(daily);
+            }
+            result.put("dailyQuantities", dailies);
+        }
+
+        return result;
     }
 }

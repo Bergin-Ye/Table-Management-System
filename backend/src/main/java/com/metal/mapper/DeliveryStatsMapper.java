@@ -64,4 +64,7 @@ public interface DeliveryStatsMapper {
                                @Param("yearMonth") String yearMonth,
                                @Param("sortField") String sortField,
                                @Param("sortOrder") String sortOrder);
+
+    @Select("SELECT * FROM delivery_stats WHERE `year_month` = #{yearMonth}")
+    List<DeliveryStats> findByYearMonth(@Param("yearMonth") String yearMonth);
 }

@@ -11,6 +11,7 @@ import com.metal.common.PageResult;
 import com.metal.common.ServiceHelper;
 import com.metal.dto.ImportResultDTO;
 import com.metal.entity.OriginalRecord;
+import com.metal.mapper.BaseMaterial156Mapper;
 import com.metal.mapper.OriginalRecordMapper;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,6 +37,9 @@ public class OriginalRecordService {
 
     @Autowired
     private OriginalRecordMapper mapper;
+
+    @Autowired
+    private BaseMaterial156Mapper baseMaterial156Mapper;
 
     private static final DateTimeFormatter YM_FMT = DateTimeFormatter.ofPattern("'FY'yyMM");
 
@@ -99,6 +103,20 @@ public class OriginalRecordService {
 
     public OriginalRecord copy(Long id) {
         return getById(id);
+    }
+
+    /**
+     * 根据料号查询156项表，返回配件名称（用于原始记录自动回填）
+     */
+    public java.util.Map<String, String> lookupFrom156(String materialCode) {
+        if (materialCode == null || materialCode.isBlank()) {
+            return java.util.Map.of("partName", "");
+        }
+        com.metal.entity.BaseMaterial156 item = baseMaterial156Mapper.findByMaterialCode(materialCode);
+        if (item != null) {
+            return java.util.Map.of("partName", item.getPartName() != null ? item.getPartName() : "");
+        }
+        return java.util.Map.of("partName", "");
     }
 
     // =============== Excel 导入 ===============

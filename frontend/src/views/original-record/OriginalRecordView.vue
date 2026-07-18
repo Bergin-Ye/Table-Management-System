@@ -239,7 +239,7 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '../../api/original-record'
-import { search as searchMaterialsApi } from '../../api/material'
+import { search as search156Api } from '../../api/base-material-156'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
@@ -332,14 +332,21 @@ async function handleSubmit() {
 async function searchMaterials(query, cb) {
   if (!query || query.length < 1) { cb([]); return }
   try {
-    const res = await searchMaterialsApi(query)
+    const res = await search156Api(query)
     const data = res.data || []
-    cb(data.map(m => ({ value: m.materialCode, label: `${m.materialCode} - ${m.materialName || ''}` })))
+    cb(data.map(m => ({ value: m.materialCode, label: `${m.materialCode} - ${m.partName || m.systemName || ''}` })))
   } catch { cb([]) }
 }
 
-function handleMaterialSelect(item) {
+async function handleMaterialSelect(item) {
   form.materialCode = item.value
+  // 查询156项表，回填配件名称
+  try {
+    const res = await api.lookup156(item.value)
+    if (res.data && res.data.partName) {
+      form.partName = res.data.partName
+    }
+  } catch { /* 查不到就不回填 */ }
 }
 
 // 过保实时查询

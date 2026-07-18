@@ -38,6 +38,10 @@ export function exportExcel(params) {
   })
 }
 
+export function lookup156(materialCode) {
+  return request.get('/settlement-machine/lookup-156', { params: { materialCode } })
+}
+
 export function downloadTemplate() {
   return request.get('/settlement-machine/template', {
     responseType: 'blob'

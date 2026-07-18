@@ -50,6 +50,11 @@ public class OriginalRecordController {
         return Result.ok(service.lookupWarranty(machineOffMaterial));
     }
 
+    @GetMapping("/lookup-156")
+    public Result<java.util.Map<String, String>> lookupFrom156(@RequestParam String materialCode) {
+        return Result.ok(service.lookupFrom156(materialCode));
+    }
+
     @PostMapping
     public Result<OriginalRecord> create(@RequestBody OriginalRecord record) {
         return Result.ok(service.create(record));

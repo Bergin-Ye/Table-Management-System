@@ -16,11 +16,11 @@
     <el-table :data="list" v-loading="loading" border stripe @selection-change="handleSelectionChange" @sort-change="handleSortChange">
       <el-table-column type="selection" width="44" fixed="left" />
       <el-table-column prop="id" label="ID" width="60" sortable="custom" />
-      <el-table-column prop="materialCode" label="物料编码" width="130" sortable="custom" />
+      <el-table-column prop="materialCode" label="料号" width="130" sortable="custom" />
       <el-table-column prop="category" label="类别" width="100" />
       <el-table-column prop="partName" label="配件名称" width="120" show-overflow-tooltip />
       <el-table-column prop="unitUsage" label="单台用量" width="100" />
-      <el-table-column prop="ratio" label="系数" width="80" />
+      <el-table-column prop="ratio" label="比例" width="80" />
       <el-table-column prop="unitPriceWithTax" label="含税单价" width="110" />
       <el-table-column prop="warrantyPeriod" label="质保期" width="90" />
       <el-table-column prop="priceType" label="价格类型" width="100" />
@@ -45,8 +45,8 @@
       <el-form ref="formRef" :model="form" :rules="rules" label-width="110px">
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="物料编码" prop="materialCode">
-              <el-input v-model="form.materialCode" placeholder="物料编码" />
+            <el-form-item label="料号" prop="materialCode">
+              <el-autocomplete v-model="form.materialCode" :fetch-suggestions="searchMaterial156" placeholder="输入料号自动匹配156项" style="width:100%" @select="handleMaterialSelect" />
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -69,7 +69,7 @@
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="系数" prop="ratio">
+            <el-form-item label="比例" prop="ratio">
               <el-input-number v-model="form.ratio" :precision="2" :min="0" style="width: 100%" />
             </el-form-item>
           </el-col>
@@ -87,19 +87,34 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="价格类型" prop="priceType">
-              <el-input v-model="form.priceType" placeholder="价格类型" />
+              <el-select v-model="form.priceType" placeholder="请选择" clearable style="width:100%">
+                <el-option label="新品价" value="新品价" />
+                <el-option label="维修价" value="维修价" />
+              </el-select>
             </el-form-item>
           </el-col>
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12">
+            <el-form-item label="统计月份" prop="statMonth">
+              <el-date-picker v-model="form.statMonth" type="month" placeholder="选择月份" value-format="YYYY-MM" style="width:100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
             <el-form-item label="机型" prop="machineModel">
               <el-input v-model="form.machineModel" placeholder="机型" />
             </el-form-item>
           </el-col>
+        </el-row>
+        <el-row :gutter="16">
           <el-col :span="12">
             <el-form-item label="结算机台数" prop="settlementMachineCount">
               <el-input-number v-model="form.settlementMachineCount" :min="0" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="12">
+            <el-form-item label=" ">
+              <el-button type="primary" @click="openMachineCountDialog">选择开机数量</el-button>
             </el-form-item>
           </el-col>
         </el-row>
@@ -116,6 +131,17 @@
         <el-button type="primary" :loading="submitLoading" @click="handleSubmit">提交</el-button>
       </template>
     </el-dialog>
+
+    <!-- 开机数量选择弹窗 -->
+    <el-dialog v-model="machineCountDialogVisible" title="选择开机数量" width="600px">
+      <el-table :data="machineCountList" highlight-current-row @row-click="handleMachineCountSelect">
+        <el-table-column prop="machineModel" label="机型" />
+        <el-table-column prop="count" label="开机台数" />
+      </el-table>
+      <template #footer>
+        <el-button @click="machineCountDialogVisible = false">取消</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -123,6 +149,8 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '../../api/settlement-machine'
+import { search as search156Api } from '../../api/base-material-156'
+import { getByMonth as getMachineCountByMonth } from '../../api/machine-count'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
@@ -156,8 +184,9 @@ const defaultForm = {
   unitUsage: null,
   ratio: null,
   unitPriceWithTax: null,
-  warrantyPeriod: '',
+  warrantyPeriod: '6个月',
   priceType: '',
+  statMonth: '',
   machineModel: '',
   settlementMachineCount: null,
   remark: ''
@@ -255,6 +284,54 @@ async function handleTemplateDownload() {
     downloadBlob(response.data, '结算机台数模板.xlsx')
     ElMessage.success('模板下载成功')
   } catch { /* error handled */ }
+}
+
+// ---- 156项 autocomplete ----
+async function searchMaterial156(query, cb) {
+  if (!query || query.length < 1) { cb([]); return }
+  try {
+    const res = await search156Api(query)
+    const data = res.data || []
+    cb(data.map(m => ({ value: m.materialCode, label: `${m.materialCode} - ${m.partName || m.systemName || ''}` })))
+  } catch { cb([]) }
+}
+
+async function handleMaterialSelect(item) {
+  form.materialCode = item.value
+  // 查询156项表，回填关联字段
+  try {
+    const res = await api.lookup156(item.value)
+    const d = res.data
+    if (d && Object.keys(d).length > 0) {
+      form.category = d.category || ''
+      form.partName = d.partName || ''
+      form.unitUsage = d.unitUsage ?? null
+      form.ratio = d.ratio ?? null
+      form.unitPriceWithTax = d.unitPriceWithTax ?? null
+    }
+  } catch { /* 查不到就不回填 */ }
+}
+
+// ---- 开机数量弹窗 ----
+const machineCountDialogVisible = ref(false)
+const machineCountList = ref([])
+
+async function openMachineCountDialog() {
+  if (!form.statMonth) {
+    ElMessage.warning('请先选择统计月份')
+    return
+  }
+  try {
+    const res = await getMachineCountByMonth(form.statMonth)
+    machineCountList.value = res.data || []
+    machineCountDialogVisible.value = true
+  } catch { ElMessage.error('查询开机数量失败') }
+}
+
+function handleMachineCountSelect(row) {
+  form.machineModel = row.machineModel
+  form.settlementMachineCount = row.count
+  machineCountDialogVisible.value = false
 }
 
 onMounted(() => doFetch())

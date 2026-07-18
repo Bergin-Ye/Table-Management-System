@@ -63,6 +63,12 @@ const routes = [
         meta: { title: '物料表' }
       },
       {
+        path: 'base-material-156',
+        name: 'BaseMaterial156',
+        component: () => import('../views/base-material-156/BaseMaterial156View.vue'),
+        meta: { title: '156项' }
+      },
+      {
         path: 'operation-log',
         name: 'OperationLog',
         component: () => import('../views/operation-log/OperationLogView.vue'),

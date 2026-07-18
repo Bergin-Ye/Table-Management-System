@@ -102,13 +102,13 @@
             </el-form-item>
           </el-col>
           <el-col :span="8">
-            <el-form-item label="物料编码" prop="materialCode">
-              <el-input v-model="form.materialCode" placeholder="物料编码" />
+            <el-form-item label="料号" prop="materialCode">
+              <el-autocomplete v-model="form.materialCode" :fetch-suggestions="searchMaterial156" placeholder="输入料号自动匹配156项" style="width:100%" @select="handleMaterialSelect" />
             </el-form-item>
           </el-col>
           <el-col :span="8">
             <el-form-item label="系统名称" prop="systemName">
-              <el-input v-model="form.systemName" placeholder="系统名称" />
+              <el-autocomplete v-model="form.systemName" :fetch-suggestions="searchBySystemName" placeholder="输入系统名称自动匹配156项" style="width:100%" @select="handleSystemNameSelect" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -149,17 +149,17 @@
           </el-col>
           <el-col :span="6">
             <el-form-item label="送货数量" prop="deliveryQuantity">
-              <el-input-number v-model="form.deliveryQuantity" :min="0" style="width: 100%" />
+              <el-input-number v-model="form.deliveryQuantity" :min="0" :disabled="true" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="6">
             <el-form-item label="上机数量" prop="machineOnQuantity">
-              <el-input-number v-model="form.machineOnQuantity" :min="0" style="width: 100%" />
+              <el-input-number v-model="form.machineOnQuantity" :min="0" :disabled="true" style="width: 100%" />
             </el-form-item>
           </el-col>
           <el-col :span="6">
             <el-form-item label="当月返修" prop="monthRepair">
-              <el-input-number v-model="form.monthRepair" :min="0" style="width: 100%" />
+              <el-input-number v-model="form.monthRepair" :min="0" :disabled="true" style="width: 100%" />
             </el-form-item>
           </el-col>
         </el-row>
@@ -172,9 +172,9 @@
               第{{ row.dayNumber }}天
             </template>
           </el-table-column>
-          <el-table-column label="数值">
+          <el-table-column label="数值（自动统计）">
             <template #default="{ row }">
-              <el-input-number v-model="row.value" :precision="2" :min="0" style="width: 100%" size="small" controls-position="right" />
+              {{ row.value }}
             </template>
           </el-table-column>
         </el-table>
@@ -191,6 +191,7 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '../../api/delivery-stats'
+import { search as search156Api } from '../../api/base-material-156'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
@@ -401,6 +402,68 @@ async function handleCopy(row) {
     dailies.value = generateDailies(form.statDate, [])
   }
   dialogVisible.value = true
+}
+
+// ---- 156项 autocomplete ----
+async function searchMaterial156(query, cb) {
+  if (!query || query.length < 1) { cb([]); return }
+  try {
+    const res = await search156Api(query)
+    const data = res.data || []
+    cb(data.map(m => ({ value: m.materialCode, label: `${m.materialCode} - ${m.partName || m.systemName || ''}`, item: m })))
+  } catch { cb([]) }
+}
+
+async function searchBySystemName(query, cb) {
+  if (!query || query.length < 1) { cb([]); return }
+  try {
+    const res = await search156Api(query)
+    const data = res.data || []
+    cb(data.map(m => ({ value: m.systemName, label: `${m.systemName} - ${m.materialCode}`, item: m })))
+  } catch { cb([]) }
+}
+
+async function handleMaterialSelect(item) {
+  form.materialCode = item.value
+  await triggerAutoFill()
+}
+
+async function handleSystemNameSelect(item) {
+  form.systemName = item.value
+  // 如果料号为空，用系统名称查到的156项数据回填料号
+  if (!form.materialCode && item.item && item.item.materialCode) {
+    form.materialCode = item.item.materialCode
+  }
+  await triggerAutoFill()
+}
+
+async function triggerAutoFill() {
+  if (!form.materialCode || !form.statDate) return
+  try {
+    const res = await api.autoFill(form.materialCode, form.statDate)
+    const d = res.data
+    // 回填156项数据
+    if (d.from156) {
+      form.category = form.category || d.from156.category || ''
+      form.systemName = form.systemName || d.from156.systemName || ''
+      form.partName = d.from156.partName || ''
+      form.unitUsage = d.from156.unitUsage ?? null
+      form.ratio = d.from156.ratio ?? null
+      form.unitPriceWithTax = d.from156.unitPriceWithTax ?? null
+    }
+    // 回填统计数据
+    if (d.machineCount != null && d.machineCount !== 0) form.machineCount = d.machineCount
+    if (d.deliveryQuantity != null) form.deliveryQuantity = d.deliveryQuantity
+    if (d.machineOnQuantity != null) form.machineOnQuantity = d.machineOnQuantity
+    if (d.monthRepair != null) form.monthRepair = d.monthRepair
+    // 每日明细
+    if (d.dailyQuantities && d.dailyQuantities.length > 0) {
+      dailies.value = d.dailyQuantities.map(dq => ({
+        dayNumber: dq.day,
+        value: dq.count
+      }))
+    }
+  } catch { /* 查不到就保持空值 */ }
 }
 
 async function handleSubmit() {

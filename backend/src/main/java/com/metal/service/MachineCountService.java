@@ -44,6 +44,10 @@ public class MachineCountService {
         return new PageResult<>(pageInfo.getTotal(), page, pageSize, list);
     }
 
+    public List<MachineCount> findByMonth(String statMonth) {
+        return mapper.findByMonth(statMonth);
+    }
+
     public MachineCount getById(Long id) {
         MachineCount r = mapper.findById(id);
         if (r == null) throw new BizException("记录不存在");

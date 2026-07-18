@@ -34,6 +34,8 @@ public class SettlementMachine {
     private String machineModel;
     @ExcelProperty(value = "结算机台数", index = 10)
     private Integer settlementMachineCount;
+    @ExcelProperty(value = "统计月份", index = 11)
+    private String statMonth;
     @ExcelIgnore
     private LocalDateTime createdAt;
     @ExcelIgnore

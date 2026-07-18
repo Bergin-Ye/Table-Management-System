@@ -87,6 +87,13 @@ public class DeliveryStatsController {
         service.exportExcel(response, companyId, keyword, category, yearMonth);
     }
 
+    @GetMapping("/auto-fill")
+    public Result<java.util.Map<String, Object>> autoFill(
+            @RequestParam String materialCode,
+            @RequestParam(required = false) String statDate) {
+        return Result.ok(service.autoFill(materialCode, statDate));
+    }
+
     @GetMapping("/template")
     public void downloadTemplate(HttpServletResponse response) {
         service.downloadTemplate(response);

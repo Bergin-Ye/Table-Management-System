@@ -4,44 +4,50 @@ import com.metal.common.PageResult;
 import com.metal.common.Result;
 import com.metal.dto.BatchDeleteDTO;
 import com.metal.dto.ImportResultDTO;
-import com.metal.entity.SettlementMachine;
-import com.metal.service.SettlementMachineService;
+import com.metal.entity.BaseMaterial156;
+import com.metal.service.BaseMaterial156Service;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
+
 @RestController
-@RequestMapping("/api/settlement-machine")
-public class SettlementMachineController {
+@RequestMapping("/api/base-material-156")
+public class BaseMaterial156Controller {
 
     @Autowired
-    private SettlementMachineService service;
+    private BaseMaterial156Service service;
 
     @GetMapping
-    public Result<PageResult<SettlementMachine>> query(
+    public Result<PageResult<BaseMaterial156>> query(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int pageSize,
             @RequestParam(required = false) Long companyId,
             @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) String machineModel,
             @RequestParam(defaultValue = "id") String sortField,
             @RequestParam(defaultValue = "desc") String sortOrder) {
-        return Result.ok(service.query(page, pageSize, companyId, keyword, machineModel, sortField, sortOrder));
+        return Result.ok(service.query(page, pageSize, companyId, keyword, sortField, sortOrder));
+    }
+
+    @GetMapping("/search")
+    public Result<List<BaseMaterial156>> search(@RequestParam String keyword) {
+        return Result.ok(service.searchByKeyword(keyword));
     }
 
     @GetMapping("/{id}")
-    public Result<SettlementMachine> getById(@PathVariable Long id) {
+    public Result<BaseMaterial156> getById(@PathVariable Long id) {
         return Result.ok(service.getById(id));
     }
 
     @PostMapping
-    public Result<SettlementMachine> create(@RequestBody SettlementMachine record) {
+    public Result<BaseMaterial156> create(@RequestBody BaseMaterial156 record) {
         return Result.ok(service.create(record));
     }
 
     @PutMapping("/{id}")
-    public Result<SettlementMachine> update(@PathVariable Long id, @RequestBody SettlementMachine record) {
+    public Result<BaseMaterial156> update(@PathVariable Long id, @RequestBody BaseMaterial156 record) {
         record.setId(id);
         return Result.ok(service.update(record));
     }
@@ -67,14 +73,8 @@ public class SettlementMachineController {
     @GetMapping("/export")
     public void exportExcel(HttpServletResponse response,
                             @RequestParam(required = false) Long companyId,
-                            @RequestParam(required = false) String keyword,
-                            @RequestParam(required = false) String machineModel) {
-        service.exportExcel(response, companyId, keyword, machineModel);
-    }
-
-    @GetMapping("/lookup-156")
-    public Result<java.util.Map<String, Object>> lookupFrom156(@RequestParam String materialCode) {
-        return Result.ok(service.lookupFrom156(materialCode));
+                            @RequestParam(required = false) String keyword) {
+        service.exportExcel(response, companyId, keyword);
     }
 
     @GetMapping("/template")

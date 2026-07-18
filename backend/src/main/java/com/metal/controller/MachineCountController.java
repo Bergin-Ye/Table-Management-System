@@ -72,6 +72,11 @@ public class MachineCountController {
         service.exportExcel(response, companyId, keyword, statMonth);
     }
 
+    @GetMapping("/by-month")
+    public Result<java.util.List<MachineCount>> byMonth(@RequestParam String statMonth) {
+        return Result.ok(service.findByMonth(statMonth));
+    }
+
     @GetMapping("/template")
     public void downloadTemplate(HttpServletResponse response) {
         service.downloadTemplate(response);

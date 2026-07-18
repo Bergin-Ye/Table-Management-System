@@ -38,6 +38,10 @@ export function exportExcel(params) {
   })
 }
 
+export function getByMonth(statMonth) {
+  return request.get('/machine-count/by-month', { params: { statMonth } })
+}
+
 export function downloadTemplate() {
   return request.get('/machine-count/template', {
     responseType: 'blob'

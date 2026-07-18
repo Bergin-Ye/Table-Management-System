@@ -42,6 +42,10 @@ export function exportExcel(params) {
   })
 }
 
+export function autoFill(materialCode, statDate) {
+  return request.get('/delivery-stats/auto-fill', { params: { materialCode, statDate } })
+}
+
 export function downloadTemplate() {
   return request.get('/delivery-stats/template', {
     responseType: 'blob'

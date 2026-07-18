@@ -90,4 +90,12 @@ public interface OriginalRecordMapper {
                                 @Param("endDate") String endDate,
                                 @Param("sortField") String sortField,
                                 @Param("sortOrder") String sortOrder);
+
+    @Select("SELECT COUNT(*) FROM original_record WHERE material_code = #{materialCode} " +
+            "AND DATE_FORMAT(record_date, '%Y-%m') = #{month}")
+    int countByMaterialCodeAndMonth(@Param("materialCode") String materialCode, @Param("month") String month);
+
+    @Select("SELECT COUNT(*) FROM original_record WHERE material_code = #{materialCode} " +
+            "AND DATE_FORMAT(record_date, '%Y-%m') = #{month} AND is_out_of_warranty = '未过保'")
+    int countRepairByMaterialCodeAndMonth(@Param("materialCode") String materialCode, @Param("month") String month);
 }
