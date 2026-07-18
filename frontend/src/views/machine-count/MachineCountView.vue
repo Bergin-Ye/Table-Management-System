@@ -229,11 +229,13 @@ async function handleClearByMonth() {
   if (!clearMonth.value) { ElMessage.warning('请先选择月份'); return }
   try {
     await ElMessageBox.confirm(`确认清除 ${clearMonth.value} 的所有开机数量数据？（基准线不会被删除）`, '二次确认', { type: 'warning' })
+  } catch { return }
+  try {
     const res = await api.clearByMonth(clearMonth.value)
-    ElMessage.success(res.data?.msg || '清除成功')
+    ElMessage.success(res.msg || '清除成功')
     clearMonth.value = ''
     doFetch()
-  } catch { /* cancelled or error */ }
+  } catch { /* interceptor already shows error */ }
 }
 
 onMounted(() => doFetch())
