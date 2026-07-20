@@ -44,7 +44,7 @@ public class AuthService {
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(password));
         user.setRealName(realName);
-        user.setRole("user");
+        user.setRole("user"); // 新注册用户默认为普通用户，管理员可在用户管理中提权
         sysUserMapper.insert(user);
         return user;
     }

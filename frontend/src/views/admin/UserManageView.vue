@@ -3,6 +3,12 @@
     <PageHeader title="用户管理" description="管理系统用户和角色权限" />
 
     <div class="content-card">
+      <div class="card-toolbar">
+        <el-button type="primary" @click="openRegister">
+          <el-icon><Plus /></el-icon>
+          注册新用户
+        </el-button>
+      </div>
       <el-table :data="users" border stripe v-loading="loading" style="width: 100%">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="username" label="用户名" width="140" />
@@ -62,13 +68,37 @@
         <el-button type="danger" :loading="deleteLoading" @click="confirmDelete">确认删除</el-button>
       </template>
     </el-dialog>
+
+    <!-- 注册新用户弹窗 -->
+    <el-dialog v-model="regVisible" title="注册新用户" width="440px" :close-on-click-modal="false" destroy-on-close>
+      <el-form ref="regFormRef" :model="regForm" :rules="regRules" label-position="top" size="large">
+        <el-form-item label="用户名" prop="username">
+          <el-input v-model="regForm.username" placeholder="请输入用户名" :prefix-icon="User" />
+        </el-form-item>
+        <el-form-item label="真实姓名" prop="realName">
+          <el-input v-model="regForm.realName" placeholder="请输入真实姓名" :prefix-icon="UserFilled" />
+        </el-form-item>
+        <el-form-item label="密码" prop="password">
+          <el-input v-model="regForm.password" type="password" placeholder="请输入密码（至少6位）" show-password :prefix-icon="Lock" />
+        </el-form-item>
+        <el-form-item label="确认密码" prop="confirmPassword">
+          <el-input v-model="regForm.confirmPassword" type="password" placeholder="请确认密码" show-password :prefix-icon="Lock" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="regVisible = false">取消</el-button>
+        <el-button type="primary" :loading="regLoading" @click="handleRegister">确认注册</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Plus, User, UserFilled, Lock } from '@element-plus/icons-vue'
 import { getUsers, updateUserRole, deleteUser, resetUserPassword } from '../../api/admin'
+import { register as registerApi } from '../../api/auth'
 import { useAuthStore } from '../../stores/auth'
 import PageHeader from '../../components/PageHeader.vue'
 
@@ -165,6 +195,68 @@ async function confirmDelete() {
   }
 }
 
+// ===== 注册新用户 =====
+const regVisible = ref(false)
+const regLoading = ref(false)
+const regFormRef = ref(null)
+
+const regForm = reactive({
+  username: '',
+  realName: '',
+  password: '',
+  confirmPassword: ''
+})
+
+const validateConfirm = (rule, value, callback) => {
+  if (value !== regForm.password) {
+    callback(new Error('两次输入的密码不一致'))
+  } else {
+    callback()
+  }
+}
+
+const regRules = {
+  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
+  realName: [{ required: true, message: '请输入真实姓名', trigger: 'blur' }],
+  password: [
+    { required: true, message: '请输入密码', trigger: 'blur' },
+    { min: 6, message: '密码至少6位', trigger: 'blur' }
+  ],
+  confirmPassword: [
+    { required: true, message: '请确认密码', trigger: 'blur' },
+    { validator: validateConfirm, trigger: 'blur' }
+  ]
+}
+
+function openRegister() {
+  regForm.username = ''
+  regForm.realName = ''
+  regForm.password = ''
+  regForm.confirmPassword = ''
+  regFormRef.value?.resetFields()
+  regVisible.value = true
+}
+
+async function handleRegister() {
+  const valid = await regFormRef.value.validate().catch(() => false)
+  if (!valid) return
+  regLoading.value = true
+  try {
+    await registerApi({
+      username: regForm.username,
+      password: regForm.password,
+      realName: regForm.realName
+    })
+    ElMessage.success('用户注册成功')
+    regVisible.value = false
+    await fetchUsers()
+  } catch {
+    // 错误已在拦截器中处理
+  } finally {
+    regLoading.value = false
+  }
+}
+
 onMounted(() => {
   fetchUsers()
 })
@@ -183,5 +275,11 @@ onMounted(() => {
   padding: 20px;
   flex: 1;
   overflow: auto;
+}
+
+.card-toolbar {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
 }
 </style>

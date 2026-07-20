@@ -34,7 +34,7 @@
       <el-table-column prop="unitUsage" label="单台机用量" width="100" />
       <el-table-column label="比例" width="80">
         <template #default="{ row }">
-          {{ row.ratio != null ? (row.ratio * 100).toFixed(4) + '%' : '' }}
+          {{ row.ratio != null ? parseFloat((row.ratio * 100).toFixed(4)) + '%' : '' }}
         </template>
       </el-table-column>
       <el-table-column label="含税单价" width="110">
@@ -124,7 +124,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import * as api from '../../api/base-material-156'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
@@ -233,7 +233,18 @@ function handleImport() {
     try {
       const res = await api.importExcel(file, companyStore.currentCompanyId)
       const d = res.data
-      ElMessage.success(`导入完成：成功 ${d.success} 条，失败 ${d.fail} 条`)
+      if (d.fail > 0) {
+        const detailLines = d.failDetails.slice(0, 10).map(f => `第${f.row}行: ${f.reason}`)
+        const detailText = detailLines.join('<br>') + (d.failDetails.length > 10 ? '<br>...更多错误已省略' : '')
+        ElMessage.warning(`导入完成：成功 ${d.success} 条，失败 ${d.fail} 条`)
+        ElMessageBox.alert(detailText, '导入失败详情', {
+          confirmButtonText: '知道了',
+          type: 'warning',
+          dangerouslyUseHTMLString: true
+        }).catch(() => {})
+      } else {
+        ElMessage.success(`导入完成：成功 ${d.success} 条`)
+      }
       doFetch()
     } catch { /* error handled in interceptor */ }
   }

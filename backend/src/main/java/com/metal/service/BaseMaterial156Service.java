@@ -21,7 +21,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.math.BigDecimal;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -147,7 +146,22 @@ public class BaseMaterial156Service {
                 }
                 @Override
                 public void doAfterAllAnalysed(AnalysisContext ctx) {
-                    if (!batch.isEmpty()) flushBatch(batch, counts);
+                    if (!batch.isEmpty()) {
+                        try {
+                            flushBatch(batch, counts);
+                        } catch (Exception e) {
+                            failDetails.add(new ImportResultDTO.FailDetail(counts[0], "批量写入失败: " + e.getMessage()));
+                            counts[2] += batch.size();
+                            batch.clear();
+                        }
+                    }
+                }
+                @Override
+                public void onException(Exception e, AnalysisContext ctx) {
+                    counts[0]++;
+                    int row = ctx.readRowHolder() != null ? ctx.readRowHolder().getRowIndex() + 1 : counts[0];
+                    failDetails.add(new ImportResultDTO.FailDetail(row, "第" + row + "行解析失败: " + e.getMessage()));
+                    counts[2]++;
                 }
             }).sheet().doRead();
         } catch (IOException e) {
@@ -196,20 +210,12 @@ public class BaseMaterial156Service {
             String fileName = URLEncoder.encode("156项导入模板.xlsx", StandardCharsets.UTF_8);
             response.setHeader("Content-Disposition", "attachment;filename=" + fileName);
 
-            BaseMaterial156 template = new BaseMaterial156();
-            template.setCategory("示例类别");
-            template.setMaterialCode("示例料号");
-            template.setSystemName("示例系统");
-            template.setPartName("示例配件");
-            template.setUnitUsage(BigDecimal.ONE);
-            template.setRatio(BigDecimal.ONE);
-            template.setUnitPriceWithTax(BigDecimal.ZERO);
-
+            // 只写表头，不写示例数据行
             OutputStream os = response.getOutputStream();
             EasyExcel.write(os, BaseMaterial156.class)
                     .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
                     .sheet("156项")
-                    .doWrite(List.of(template));
+                    .doWrite(List.of());
             os.flush();
         } catch (IOException e) {
             throw new BizException("模板下载失败: " + e.getMessage());

@@ -25,6 +25,11 @@ public class AuthController {
 
     @PostMapping("/register")
     public Result<?> register(@RequestBody Map<String, String> body) {
+        // 仅管理员可注册新用户
+        AuthInterceptor.UserContext ctx = AuthInterceptor.getCurrentUser();
+        if (ctx == null || !"admin".equals(ctx.getRole())) {
+            return Result.fail("无权限：仅管理员可注册新用户");
+        }
         authService.register(body.get("username"), body.get("password"), body.get("realName"));
         return Result.ok("注册成功");
     }
