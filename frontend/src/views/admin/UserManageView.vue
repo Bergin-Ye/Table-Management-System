@@ -8,7 +8,35 @@
           <el-icon><Plus /></el-icon>
           注册新用户
         </el-button>
+        <el-button @click="showScheduler = !showScheduler">
+          <el-icon><Clock /></el-icon>
+          定时任务设置
+        </el-button>
       </div>
+
+      <!-- 定时任务设置 -->
+      <div v-if="showScheduler" class="scheduler-panel">
+        <div class="scheduler-title">超比统计定时刷新设置</div>
+        <div class="scheduler-row">
+          <span class="scheduler-label">当前表达式：</span>
+          <el-tag type="info">{{ schedulerCron }}</el-tag>
+        </div>
+        <div class="scheduler-row">
+          <span class="scheduler-label">执行时间：</span>
+          <el-time-picker
+            v-model="schedulerTime"
+            format="HH:mm"
+            placeholder="选择时间"
+            style="width: 160px"
+          />
+          <span class="scheduler-hint">每天该时间自动刷新超比统计数据</span>
+        </div>
+        <div class="scheduler-row">
+          <el-button type="primary" size="small" :loading="schedulerLoading" @click="saveSchedulerTime">保存</el-button>
+          <el-button size="small" @click="schedulerTime = null">重置</el-button>
+        </div>
+      </div>
+
       <el-table :data="users" border stripe v-loading="loading" style="width: 100%">
         <el-table-column prop="id" label="ID" width="60" />
         <el-table-column prop="username" label="用户名" width="140" />
@@ -96,9 +124,10 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, User, UserFilled, Lock } from '@element-plus/icons-vue'
+import { Plus, User, UserFilled, Lock, Clock } from '@element-plus/icons-vue'
 import { getUsers, updateUserRole, deleteUser, resetUserPassword } from '../../api/admin'
 import { register as registerApi } from '../../api/auth'
+import { getSchedulerCron, updateSchedulerCron } from '../../api/scheduler'
 import { useAuthStore } from '../../stores/auth'
 import PageHeader from '../../components/PageHeader.vue'
 
@@ -257,8 +286,45 @@ async function handleRegister() {
   }
 }
 
+// ===== 定时任务设置 =====
+const showScheduler = ref(false)
+const schedulerCron = ref('')
+const schedulerTime = ref(null)
+const schedulerLoading = ref(false)
+
+async function loadSchedulerCron() {
+  try {
+    const res = await getSchedulerCron()
+    schedulerCron.value = res.data.cron
+    // 从 cron 表达式解析时间 (格式: 秒 分 时 日 月 周)
+    const parts = res.data.cron.split(/\s+/)
+    if (parts.length >= 3) {
+      const h = parseInt(parts[2])
+      const m = parseInt(parts[1])
+      if (!isNaN(h) && !isNaN(m)) {
+        schedulerTime.value = new Date(2000, 0, 1, h, m, 0)
+      }
+    }
+  } catch { /* ignore */ }
+}
+
+async function saveSchedulerTime() {
+  if (!schedulerTime.value) { return }
+  const h = schedulerTime.value.getHours()
+  const m = schedulerTime.value.getMinutes()
+  const cron = `0 ${m} ${h} * * *`
+  schedulerLoading.value = true
+  try {
+    await updateSchedulerCron(cron)
+    schedulerCron.value = cron
+    ElMessage.success('定时任务已更新：每天 ' + String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ' 执行')
+  } catch { /* error handled */ }
+  finally { schedulerLoading.value = false }
+}
+
 onMounted(() => {
   fetchUsers()
+  loadSchedulerCron()
 })
 </script>
 
@@ -281,5 +347,38 @@ onMounted(() => {
   margin-bottom: 16px;
   display: flex;
   gap: 8px;
+}
+
+.scheduler-panel {
+  background: #F8F9FA;
+  border: 1px solid #E5E5EA;
+  border-radius: 10px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.scheduler-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1D1D1F;
+  margin-bottom: 14px;
+}
+
+.scheduler-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.scheduler-label {
+  font-size: 13px;
+  color: #666;
+  min-width: 90px;
+}
+
+.scheduler-hint {
+  font-size: 12px;
+  color: #999;
 }
 </style>

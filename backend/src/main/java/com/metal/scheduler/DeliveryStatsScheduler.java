@@ -2,9 +2,12 @@ package com.metal.scheduler;
 
 import com.metal.entity.DeliveryStats;
 import com.metal.entity.DeliveryStatsDaily;
+import com.metal.entity.SysConfig;
 import com.metal.mapper.*;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.scheduling.support.CronTrigger;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -16,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ScheduledFuture;
 
 @Component
 public class DeliveryStatsScheduler {
@@ -28,26 +32,80 @@ public class DeliveryStatsScheduler {
     private DeliveryRecordMapper deliveryRecordMapper;
     @Autowired
     private OriginalRecordMapper originalRecordMapper;
+    @Autowired
+    private SysConfigMapper sysConfigMapper;
 
     private static final DateTimeFormatter YM_FMT = DateTimeFormatter.ofPattern("'FY'yyMM");
+    private static final String DEFAULT_CRON = "0 0 3 * * *";
+    private static final String CONFIG_KEY = "scheduler.cron";
+
+    private final ThreadPoolTaskScheduler taskScheduler = new ThreadPoolTaskScheduler();
+    private ScheduledFuture<?> scheduledTask;
+
+    @PostConstruct
+    public void init() {
+        taskScheduler.initialize();
+        taskScheduler.setPoolSize(1);
+        scheduleTask();
+    }
 
     /**
-     * 每天凌晨3点刷新当前月份的超比统计数据
+     * 读取数据库配置的 cron 表达式并调度任务
      */
-    @Scheduled(cron = "0 0 3 * * *")
+    private void scheduleTask() {
+        String cron = getCronFromDb();
+        if (scheduledTask != null) {
+            scheduledTask.cancel(false);
+        }
+        scheduledTask = taskScheduler.schedule(this::refreshCurrentMonthStats, new CronTrigger(cron));
+    }
+
+    /**
+     * 重新调度（配置变更后调用）
+     */
+    public void reschedule() {
+        scheduleTask();
+    }
+
+    /**
+     * 获取当前 cron 表达式
+     */
+    public String getCurrentCron() {
+        return getCronFromDb();
+    }
+
+    /**
+     * 更新 cron 表达式并重新调度
+     */
+    public void updateCron(String cron) {
+        sysConfigMapper.updateValue(CONFIG_KEY, cron);
+        reschedule();
+    }
+
+    private String getCronFromDb() {
+        try {
+            SysConfig config = sysConfigMapper.findByKey(CONFIG_KEY);
+            if (config != null && config.getConfigValue() != null && !config.getConfigValue().isBlank()) {
+                return config.getConfigValue();
+            }
+        } catch (Exception ignored) {}
+        return DEFAULT_CRON;
+    }
+
+    /**
+     * 刷新当前月份的超比统计数据
+     */
     public void refreshCurrentMonthStats() {
         LocalDate now = LocalDate.now();
         String currentMonth = now.format(DateTimeFormatter.ofPattern("yyyy-MM"));
         String yearMonth = now.format(YM_FMT);
 
-        // 查询当前月份所有超比统计记录
         List<DeliveryStats> statsList = deliveryStatsMapper.findByYearMonth(yearMonth);
 
         for (DeliveryStats stats : statsList) {
             String materialCode = stats.getMaterialCode();
             if (materialCode == null || materialCode.isBlank()) continue;
 
-            // 重新查询统计数据
             int deliveryQty = deliveryRecordMapper.countByMaterialCodeAndMonth(materialCode, currentMonth);
             int machineOnQty = originalRecordMapper.countByMaterialCodeAndMonth(materialCode, currentMonth);
             int repairQty = originalRecordMapper.countRepairByMaterialCodeAndMonth(materialCode, currentMonth);
@@ -56,13 +114,9 @@ public class DeliveryStatsScheduler {
             stats.setMachineOnQuantity(machineOnQty);
             stats.setMonthRepair(repairQty);
 
-            // 重新计算
             applyCalculations(stats);
-
-            // 更新主表
             deliveryStatsMapper.update(stats);
 
-            // 刷新每日明细
             dailyMapper.deleteByStatId(stats.getId());
             List<Map<String, Object>> dailyCounts =
                     deliveryRecordMapper.countDailyByMaterialCodeAndMonth(materialCode, currentMonth);
