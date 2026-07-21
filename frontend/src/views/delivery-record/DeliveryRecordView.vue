@@ -194,6 +194,10 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="语音输入">
+          <el-input v-model="voiceText" type="textarea" :rows="3" :placeholder="voicePlaceholder" />
+          <el-button type="primary" size="small" style="margin-top:8px" @click="handleVoiceParse" :loading="voiceLoading">解析</el-button>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -208,6 +212,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as deliveryApi from '../../api/delivery-record'
 import { search as searchMaterialsApi } from '../../api/material'
+import { parseVoiceText } from '../../api/voice-parse'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
@@ -423,6 +428,36 @@ async function handleTemplateDownload() {
   } catch {
     // error handled
   }
+}
+
+// 语音输入
+const voiceText = ref('')
+const voiceLoading = ref(false)
+const voicePlaceholder = '请按格式朗读: 日期2026年7月21日 类别风扇类 物料名称驱动风扇 规格型号109P0424H7D28 物料编码15297012400 序列号SN001 数量10 单位台 品牌BYD 产品属性新品 厂房A车间 送货单号SH001 备注无'
+
+async function handleVoiceParse() {
+  if (!voiceText.value.trim()) { ElMessage.warning('请先输入文字'); return }
+  voiceLoading.value = true
+  try {
+    const res = await parseVoiceText(voiceText.value.trim(), 'delivery-record')
+    const fields = res.data.fields || {}
+    const filledCount = res.data.filledCount || 0
+    if (filledCount === 0) { ElMessage.warning('未识别到有效字段，请检查格式'); return }
+    const fieldMap = {
+      recordDate: 'recordDate', category: 'category', materialName: 'materialName',
+      specModel: 'specModel', materialCode: 'materialCode', materialSerial: 'materialSerial',
+      quantity: 'quantity', unit: 'unit', brand: 'brand', productAttr: 'productAttr',
+      factory: 'factory', shipmentNo: 'shipmentNo', remark: 'remark'
+    }
+    for (const [k, v] of Object.entries(fields)) {
+      if (fieldMap[k] && v) {
+        if (k === 'quantity') { const n = parseInt(v); if (!isNaN(n)) form[fieldMap[k]] = n }
+        else form[fieldMap[k]] = v
+      }
+    }
+    ElMessage.success(`已填充 ${filledCount} 个字段，请核对`)
+  } catch { ElMessage.error('解析失败') }
+  finally { voiceLoading.value = false }
 }
 
 // 物料编码模糊搜索

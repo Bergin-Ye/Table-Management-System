@@ -57,6 +57,10 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="语音输入">
+          <el-input v-model="voiceText" type="textarea" :rows="3" :placeholder="voicePlaceholder" />
+          <el-button type="primary" size="small" style="margin-top:8px" @click="handleVoiceParse" :loading="voiceLoading">解析</el-button>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -70,6 +74,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '../../api/machine-detail'
+import { parseVoiceText } from '../../api/voice-parse'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
@@ -194,6 +199,25 @@ async function handleTemplateDownload() {
     downloadBlob(response.data, '机型明细模板.xlsx')
     ElMessage.success('模板下载成功')
   } catch { /* error handled */ }
+}
+
+// 语音输入
+const voiceText = ref('')
+const voiceLoading = ref(false)
+const voicePlaceholder = '请按格式朗读: 厂房A车间 机台号ESS 机品牌FANUC'
+async function handleVoiceParse() {
+  if (!voiceText.value.trim()) { ElMessage.warning('请先输入文字'); return }
+  voiceLoading.value = true
+  try {
+    const res = await parseVoiceText(voiceText.value.trim(), 'machine-detail')
+    const fields = res.data.fields || {}
+    const filledCount = res.data.filledCount || 0
+    if (!filledCount) { ElMessage.warning('未识别到有效字段，请检查格式'); return }
+    const fm = { factory: 'factory', machineNo: 'machineNo', machineBrand: 'machineBrand' }
+    for (const [k, v] of Object.entries(fields)) { if (fm[k] && v) form[fm[k]] = v }
+    ElMessage.success(`已填充 ${filledCount} 个字段，请核对`)
+  } catch { ElMessage.error('解析失败') }
+  finally { voiceLoading.value = false }
 }
 
 onMounted(() => doFetch())

@@ -80,6 +80,10 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="语音输入">
+          <el-input v-model="voiceText" type="textarea" :rows="3" :placeholder="voicePlaceholder" />
+          <el-button type="primary" size="small" style="margin-top:8px" @click="handleVoiceParse" :loading="voiceLoading">解析</el-button>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -93,6 +97,7 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import * as api from '../../api/machine-count'
+import { parseVoiceText } from '../../api/voice-parse'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
@@ -244,6 +249,30 @@ async function handleClearByMonth() {
     clearMonth.value = ''
     doFetch()
   } catch { /* interceptor already shows error */ }
+}
+
+const voiceText = ref('')
+const voiceLoading = ref(false)
+const voicePlaceholder = '请按格式朗读: 机型发那科 开机数量3085 比例100 统计月份2026-07 备注当月总机台基数'
+async function handleVoiceParse() {
+  if (!voiceText.value.trim()) { ElMessage.warning('请先输入文字'); return }
+  voiceLoading.value = true
+  try {
+    const res = await parseVoiceText(voiceText.value.trim(), 'machine-count')
+    const fields = res.data.fields || {}
+    const fc = res.data.filledCount || 0
+    if (!fc) { ElMessage.warning('未识别到有效字段，请检查格式'); return }
+    const fm = { machineModel: 'machineModel', count: 'count', ratioPct: 'ratioPct', statMonth: 'statMonth', remark: 'remark' }
+    for (const [k, v] of Object.entries(fields)) {
+      if (fm[k] && v) {
+        if (k === 'count') { const n = parseInt(v); if (!isNaN(n)) form[fm[k]] = n }
+        else if (k === 'ratioPct') { const n = parseFloat(v); if (!isNaN(n)) form[fm[k]] = n }
+        else form[fm[k]] = v
+      }
+    }
+    ElMessage.success(`已填充 ${fc} 个字段，请核对`)
+  } catch { ElMessage.error('解析失败') }
+  finally { voiceLoading.value = false }
 }
 
 onMounted(() => doFetch())

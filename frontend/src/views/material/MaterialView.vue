@@ -57,6 +57,10 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="语音输入">
+          <el-input v-model="voiceText" type="textarea" :rows="3" :placeholder="voicePlaceholder" />
+          <el-button type="primary" size="small" style="margin-top:8px" @click="handleVoiceParse" :loading="voiceLoading">解析</el-button>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -70,6 +74,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '../../api/material'
+import { parseVoiceText } from '../../api/voice-parse'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
 import { useTableSelection } from '../../composables/useTableSelection'
@@ -195,6 +200,25 @@ async function handleTemplateDownload() {
     downloadBlob(response.data, '物料表模板.xlsx')
     ElMessage.success('模板下载成功')
   } catch { /* error handled */ }
+}
+
+// 语音输入
+const voiceText = ref('')
+const voiceLoading = ref(false)
+const voicePlaceholder = '请按格式朗读: 类别风扇类 物料名称驱动风扇 规格型号109P0424H7D28 物料编码15297012400'
+async function handleVoiceParse() {
+  if (!voiceText.value.trim()) { ElMessage.warning('请先输入文字'); return }
+  voiceLoading.value = true
+  try {
+    const res = await parseVoiceText(voiceText.value.trim(), 'material')
+    const fields = res.data.fields || {}
+    const fc = res.data.filledCount || 0
+    if (!fc) { ElMessage.warning('未识别到有效字段，请检查格式'); return }
+    const fm = { category: 'category', materialName: 'materialName', specModel: 'specModel', materialCode: 'materialCode' }
+    for (const [k, v] of Object.entries(fields)) { if (fm[k] && v) form[fm[k]] = v }
+    ElMessage.success(`已填充 ${fc} 个字段，请核对`)
+  } catch { ElMessage.error('解析失败') }
+  finally { voiceLoading.value = false }
 }
 
 onMounted(() => doFetch())

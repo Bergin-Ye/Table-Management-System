@@ -207,6 +207,10 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="语音输入">
+          <el-input v-model="voiceText" type="textarea" :rows="3" :placeholder="voicePlaceholder" />
+          <el-button type="primary" size="small" style="margin-top:8px" @click="handleVoiceParse" :loading="voiceLoading">解析</el-button>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -220,6 +224,7 @@
 import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '../../api/machine-material'
+import { parseVoiceText } from '../../api/voice-parse'
 import { search as searchMaterialsApi } from '../../api/material'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
@@ -418,6 +423,40 @@ async function handleTemplateDownload() {
     downloadBlob(response.data, '上机物料模板.xlsx')
     ElMessage.success('模板下载成功')
   } catch { /* error handled */ }
+}
+
+const voiceText = ref('')
+const voiceLoading = ref(false)
+const voicePlaceholder = '请按格式朗读: 日期2026年7月21日 班次白班 厂房A 序列号001 机台号ESS 机型FANUC 维修人张三 确认人李四 报修时间15时 开始时间15时30分 结束时间18时 故障现象主轴异响 维修描述更换丝杆 料号2212673-0461 配件名称丝杆 数量1 上机物料号M001 下机物料号M002 备注无'
+async function handleVoiceParse() {
+  if (!voiceText.value.trim()) { ElMessage.warning('请先输入文字'); return }
+  voiceLoading.value = true
+  try {
+    const res = await parseVoiceText(voiceText.value.trim(), 'machine-material')
+    const fields = res.data.fields || {}
+    const fc = res.data.filledCount || 0
+    if (!fc) { ElMessage.warning('未识别到有效字段，请检查格式'); return }
+    const fm = {
+      recordDate: 'recordDate', shift: 'shift', factory: 'factory', serialNumber: 'serialNumber',
+      machineNo: 'machineNo', machineModel: 'machineModel', repairPerson: 'repairPerson',
+      confirmer: 'confirmer', repairRequestTime: 'repairRequestTime', startTime: 'startTime',
+      endTime: 'endTime', faultPhenomenon: 'faultPhenomenon', faultDescription: 'faultDescription',
+      materialCode: 'materialCode', partName: 'partName', quantity: 'quantity',
+      machineOnMaterial: 'machineOnMaterial', machineOffMaterial: 'machineOffMaterial',
+      remark: 'remark', deliveryRecordRef: 'deliveryRecordRef'
+    }
+    for (const [k, v] of Object.entries(fields)) {
+      if (fm[k] && v) {
+        if (k === 'quantity') { const n = parseInt(v); if (!isNaN(n)) form[fm[k]] = n }
+        else if (['repairRequestTime', 'startTime', 'endTime'].includes(k)) {
+          const m = v.match(/(\d{1,2})时(\d{1,2})?/)
+          if (m) form[fm[k]] = m[1].padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0')
+        } else form[fm[k]] = v
+      }
+    }
+    ElMessage.success(`已填充 ${fc} 个字段，请核对`)
+  } catch { ElMessage.error('解析失败') }
+  finally { voiceLoading.value = false }
 }
 
 onMounted(() => doFetch())

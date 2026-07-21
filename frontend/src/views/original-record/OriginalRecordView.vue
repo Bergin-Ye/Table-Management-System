@@ -232,6 +232,10 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="语音输入">
+          <el-input v-model="voiceText" type="textarea" :rows="3" :placeholder="voicePlaceholder" />
+          <el-button type="primary" size="small" style="margin-top:8px" @click="handleVoiceParse" :loading="voiceLoading">解析</el-button>
+        </el-form-item>
         <el-form-item>
           <el-button link type="primary" @click="handleOcrUpload">
             <el-icon><Camera /></el-icon>
@@ -256,6 +260,7 @@ import { ElMessage } from 'element-plus'
 import { Camera } from '@element-plus/icons-vue'
 import * as api from '../../api/original-record'
 import * as ocrApi from '../../api/ocr'
+import { parseVoiceText } from '../../api/voice-parse'
 import { search as search156Api } from '../../api/base-material-156'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
@@ -462,6 +467,44 @@ async function handleTemplateDownload() {
     downloadBlob(response.data, '原始记录模板.xlsx')
     ElMessage.success('模板下载成功')
   } catch { /* error handled */ }
+}
+
+// 语音输入
+const voiceText = ref('')
+const voiceLoading = ref(false)
+const voicePlaceholder = '请按格式朗读: 日期2026年7月21日 班次白班 厂房A 序列号001 机台号ESS 机型FANUC 诊断人张三 维修人李四 确认人王五 报修时间15时 开始时间15时30分 结束时间18时 故障现象主轴异响 维修描述更换丝杆 料号2212673-0461 配件名称丝杆 数量1 上机物料号M001 下机物料号M002 备注无'
+
+async function handleVoiceParse() {
+  if (!voiceText.value.trim()) { ElMessage.warning('请先输入文字'); return }
+  voiceLoading.value = true
+  try {
+    const res = await parseVoiceText(voiceText.value.trim(), 'original-record')
+    const fields = res.data.fields || {}
+    const filledCount = res.data.filledCount || 0
+    if (filledCount === 0) { ElMessage.warning('未识别到有效字段，请检查格式'); return }
+    const fieldMap = {
+      recordDate: 'recordDate', shift: 'shift', factory: 'factory',
+      serialNumber: 'serialNumber', machineNo: 'machineNo', machineModel: 'machineModel',
+      diagnostician: 'diagnostician', repairPerson: 'repairPerson', confirmer: 'confirmer',
+      repairRequestTime: 'repairRequestTime', startTime: 'startTime', endTime: 'endTime',
+      faultPhenomenon: 'faultPhenomenon', faultDescription: 'faultDescription',
+      materialCode: 'materialCode', partName: 'partName', quantity: 'quantity',
+      machineOnMaterial: 'machineOnMaterial', machineOffMaterial: 'machineOffMaterial',
+      remark: 'remark', deliveryRecordRef: 'deliveryRecordRef'
+    }
+    for (const [k, v] of Object.entries(fields)) {
+      if (fieldMap[k] && v) {
+        if (k === 'quantity') { const n = parseInt(v); if (!isNaN(n)) form[fieldMap[k]] = n }
+        else if (['repairRequestTime', 'startTime', 'endTime'].includes(k)) {
+          const m = v.match(/(\d{1,2})时(\d{1,2})?/)
+          if (m) form[fieldMap[k]] = m[1].padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0')
+        }
+        else form[fieldMap[k]] = v
+      }
+    }
+    ElMessage.success(`已填充 ${filledCount} 个字段，请核对`)
+  } catch { ElMessage.error('解析失败') }
+  finally { voiceLoading.value = false }
 }
 
 // OCR 识别填充
