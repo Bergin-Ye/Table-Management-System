@@ -194,12 +194,6 @@
             </el-form-item>
           </el-col>
         </el-row>
-        <el-form-item>
-          <el-button link type="primary" @click="handleOcrUpload">
-            <el-icon><Camera /></el-icon>
-            OCR图片识别填充
-          </el-button>
-        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -212,9 +206,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Camera } from '@element-plus/icons-vue'
 import * as deliveryApi from '../../api/delivery-record'
-import * as ocrApi from '../../api/ocr'
 import { search as searchMaterialsApi } from '../../api/material'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
@@ -431,30 +423,6 @@ async function handleTemplateDownload() {
   } catch {
     // error handled
   }
-}
-
-// OCR
-async function handleOcrUpload() {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*'
-  input.onchange = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    try {
-      const res = await ocrApi.recognize(file)
-      const d = res.data
-      if (d.fields && Object.keys(d.fields).length > 0) {
-        Object.assign(form, d.fields)
-        ElMessage.success('OCR识别完成，请核对后提交')
-      } else {
-        ElMessage.info('OCR功能开发中，敬请期待')
-      }
-    } catch {
-      // error handled
-    }
-  }
-  input.click()
 }
 
 // 物料编码模糊搜索
