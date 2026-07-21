@@ -65,8 +65,11 @@ public interface DeliveryStatsMapper {
                                @Param("sortField") String sortField,
                                @Param("sortOrder") String sortOrder);
 
-    @Select("SELECT * FROM delivery_stats WHERE `year_month` = #{yearMonth}")
-    List<DeliveryStats> findByYearMonth(@Param("yearMonth") String yearMonth);
+    @Select("<script>" +
+            "SELECT * FROM delivery_stats WHERE `year_month` = #{yearMonth} " +
+            "<if test='companyId != null'>AND company_id = #{companyId}</if> " +
+            "</script>")
+    List<DeliveryStats> findByYearMonth(@Param("yearMonth") String yearMonth, @Param("companyId") Long companyId);
 
     @Select("SELECT COUNT(*) FROM delivery_stats WHERE material_code = #{materialCode} AND `year_month` = #{yearMonth}")
     int countByMaterialCodeAndYearMonth(@Param("materialCode") String materialCode, @Param("yearMonth") String yearMonth);

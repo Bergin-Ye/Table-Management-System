@@ -23,7 +23,9 @@
       <el-table-column prop="id" label="ID" width="60" sortable="custom" />
       <el-table-column prop="machineModel" label="机型" width="120" />
       <el-table-column prop="count" label="数量" width="80" />
-      <el-table-column prop="ratioPct" label="占比(%)" width="90" />
+      <el-table-column prop="ratioPct" label="占比(%)" width="100">
+        <template #default="{ row }">{{ row.ratioPct != null ? row.ratioPct + '%' : '' }}</template>
+      </el-table-column>
       <el-table-column prop="statMonth" label="统计月份" width="110" />
       <el-table-column prop="remark" label="备注" width="150" show-overflow-tooltip />
       <el-table-column prop="createdBy" label="创建人" width="100" />

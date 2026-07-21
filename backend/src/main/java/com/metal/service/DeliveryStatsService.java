@@ -157,6 +157,13 @@ public class DeliveryStatsService {
                         data.setCompanyId(companyId != null ? companyId : 1L);
                         data.setCreatedBy(user);
                         data.setUpdatedBy(user);
+                        // Handle percentage: if ratio is 0~1 range keep as-is, if > 1 divide by 100
+                        if (data.getRatio() != null) {
+                            BigDecimal r = data.getRatio();
+                            if (r.compareTo(BigDecimal.ONE) > 0) {
+                                data.setRatio(r.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+                            }
+                        }
                         batch.add(data);
 
                         if (batch.size() >= IMPORT_BATCH_SIZE) {
@@ -281,7 +288,7 @@ public class DeliveryStatsService {
     /**
      * 根据料号+日期自动查询各字段的填充值
      */
-    public java.util.Map<String, Object> autoFill(String materialCode, String statDate) {
+    public java.util.Map<String, Object> autoFill(String materialCode, String statDate, Long companyId) {
         java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
         if (materialCode == null || materialCode.isBlank()) return result;
 
@@ -309,24 +316,24 @@ public class DeliveryStatsService {
 
         if (!month.isEmpty()) {
             // 3. 机台数（来自结算机台数）
-            Integer mc = settlementMachineMapper.sumMachineCountByMaterialCodeAndMonth(materialCode, month);
+            Integer mc = settlementMachineMapper.sumMachineCountByMaterialCodeAndMonth(materialCode, month, companyId);
             result.put("machineCount", mc != null ? mc : 0);
 
             // 4. 送货数量
-            int dq = deliveryRecordMapper.countByMaterialCodeAndMonth(materialCode, month);
+            int dq = deliveryRecordMapper.countByMaterialCodeAndMonth(materialCode, month, companyId);
             result.put("deliveryQuantity", dq);
 
             // 5. 上机数量
-            int moq = originalRecordMapper.countByMaterialCodeAndMonth(materialCode, month);
+            int moq = originalRecordMapper.countByMaterialCodeAndMonth(materialCode, month, companyId);
             result.put("machineOnQuantity", moq);
 
             // 6. 当月返修（未过保）
-            int mr = originalRecordMapper.countRepairByMaterialCodeAndMonth(materialCode, month);
+            int mr = originalRecordMapper.countRepairByMaterialCodeAndMonth(materialCode, month, companyId);
             result.put("monthRepair", mr);
 
             // 7. 每日送货明细
             java.util.List<java.util.Map<String, Object>> dailyCounts =
-                    deliveryRecordMapper.countDailyByMaterialCodeAndMonth(materialCode, month);
+                    deliveryRecordMapper.countDailyByMaterialCodeAndMonth(materialCode, month, companyId);
             java.util.Map<Integer, Integer> dayMap = new java.util.HashMap<>();
             for (java.util.Map<String, Object> row : dailyCounts) {
                 Number day = (Number) row.get("day");
@@ -353,9 +360,9 @@ public class DeliveryStatsService {
      * 批量刷新指定月份的所有超比统计数据
      */
     @Transactional
-    public int batchRefreshByMonth(String yearMonth, String statMonth) {
+    public int batchRefreshByMonth(String yearMonth, String statMonth, Long companyId) {
         if (yearMonth == null || yearMonth.isBlank()) return 0;
-        List<DeliveryStats> statsList = mapper.findByYearMonth(yearMonth);
+        List<DeliveryStats> statsList = mapper.findByYearMonth(yearMonth, companyId);
         int count = 0;
         for (DeliveryStats stats : statsList) {
             String materialCode = stats.getMaterialCode();
@@ -371,9 +378,9 @@ public class DeliveryStatsService {
                 } catch (Exception ignored) {}
             }
 
-            int deliveryQty = deliveryRecordMapper.countByMaterialCodeAndMonth(materialCode, month);
-            int machineOnQty = originalRecordMapper.countByMaterialCodeAndMonth(materialCode, month);
-            int repairQty = originalRecordMapper.countRepairByMaterialCodeAndMonth(materialCode, month);
+            int deliveryQty = deliveryRecordMapper.countByMaterialCodeAndMonth(materialCode, month, companyId);
+            int machineOnQty = originalRecordMapper.countByMaterialCodeAndMonth(materialCode, month, companyId);
+            int repairQty = originalRecordMapper.countRepairByMaterialCodeAndMonth(materialCode, month, companyId);
 
             stats.setDeliveryQuantity(deliveryQty);
             stats.setMachineOnQuantity(machineOnQty);
@@ -385,7 +392,7 @@ public class DeliveryStatsService {
             // 刷新每日明细
             dailyMapper.deleteByStatId(stats.getId());
             java.util.List<java.util.Map<String, Object>> dailyCounts =
-                    deliveryRecordMapper.countDailyByMaterialCodeAndMonth(materialCode, month);
+                    deliveryRecordMapper.countDailyByMaterialCodeAndMonth(materialCode, month, companyId);
             java.util.Map<Integer, Integer> dayMap = new java.util.HashMap<>();
             for (java.util.Map<String, Object> row : dailyCounts) {
                 Number day = (Number) row.get("day");

@@ -251,6 +251,13 @@ public class MachineCountService {
                         data.setCompanyId(companyId != null ? companyId : 1L);
                         data.setCreatedBy(user);
                         data.setUpdatedBy(user);
+                        // Handle ratioPct: if value is 0~1 range, multiply by 100
+                        if (data.getRatioPct() != null) {
+                            BigDecimal r = data.getRatioPct();
+                            if (r.compareTo(BigDecimal.ONE) <= 0) {
+                                data.setRatioPct(r.multiply(BigDecimal.valueOf(100)).setScale(2, RoundingMode.HALF_UP));
+                            }
+                        }
                         batch.add(data);
                         if (batch.size() >= IMPORT_BATCH_SIZE) {
                             flushBatch(batch, counts);

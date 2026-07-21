@@ -130,6 +130,13 @@ public class SettlementMachineService {
                         data.setCompanyId(companyId != null ? companyId : 1L);
                         data.setCreatedBy(user);
                         data.setUpdatedBy(user);
+                        // Handle percentage: if ratio is 0~1 range keep as-is, if > 1 divide by 100
+                        if (data.getRatio() != null) {
+                            java.math.BigDecimal r = data.getRatio();
+                            if (r.compareTo(java.math.BigDecimal.ONE) > 0) {
+                                data.setRatio(r.divide(java.math.BigDecimal.valueOf(100), 4, java.math.RoundingMode.HALF_UP));
+                            }
+                        }
                         batch.add(data);
                         if (batch.size() >= IMPORT_BATCH_SIZE) {
                             flushBatch(batch, counts);

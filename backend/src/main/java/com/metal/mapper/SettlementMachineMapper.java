@@ -58,7 +58,8 @@ public interface SettlementMachineMapper {
                                    @Param("sortOrder") String sortOrder);
 
     @Select("SELECT SUM(settlement_machine_count) FROM settlement_machine " +
-            "WHERE material_code = #{materialCode} AND stat_month = #{statMonth}")
+            "WHERE material_code = #{materialCode} AND stat_month = #{statMonth} AND company_id = #{companyId}")
     Integer sumMachineCountByMaterialCodeAndMonth(@Param("materialCode") String materialCode,
-                                                   @Param("statMonth") String statMonth);
+                                                   @Param("statMonth") String statMonth,
+                                                   @Param("companyId") Long companyId);
 }

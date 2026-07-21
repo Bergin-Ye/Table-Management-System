@@ -88,18 +88,20 @@ public class DeliveryStatsController {
     }
 
     @PostMapping("/batch-refresh")
-    public Result<java.util.Map<String, Object>> batchRefresh(@RequestBody java.util.Map<String, String> body) {
-        String yearMonth = body.get("yearMonth");
-        String statMonth = body.get("statMonth");
-        int count = service.batchRefreshByMonth(yearMonth, statMonth);
+    public Result<java.util.Map<String, Object>> batchRefresh(@RequestBody java.util.Map<String, Object> body) {
+        String yearMonth = (String) body.get("yearMonth");
+        String statMonth = (String) body.get("statMonth");
+        Long companyId = body.get("companyId") != null ? Long.valueOf(body.get("companyId").toString()) : null;
+        int count = service.batchRefreshByMonth(yearMonth, statMonth, companyId);
         return Result.ok(java.util.Map.of("msg", "已更新 " + count + " 条记录"));
     }
 
     @GetMapping("/auto-fill")
     public Result<java.util.Map<String, Object>> autoFill(
             @RequestParam String materialCode,
-            @RequestParam(required = false) String statDate) {
-        return Result.ok(service.autoFill(materialCode, statDate));
+            @RequestParam(required = false) String statDate,
+            @RequestParam(required = false) Long companyId) {
+        return Result.ok(service.autoFill(materialCode, statDate, companyId));
     }
 
     @GetMapping("/template")
@@ -124,6 +126,7 @@ public class DeliveryStatsController {
         if (body.get("monthRepair") != null) s.setMonthRepair(Integer.valueOf(body.get("monthRepair").toString()));
         if (body.get("statDate") != null) s.setStatDate(java.time.LocalDate.parse(body.get("statDate").toString()));
         s.setYearMonth((String) body.get("yearMonth"));
+        if (body.get("companyId") != null) s.setCompanyId(Long.valueOf(body.get("companyId").toString()));
         return s;
     }
 

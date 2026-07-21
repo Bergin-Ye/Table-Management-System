@@ -100,15 +100,16 @@ public class DeliveryStatsScheduler {
         String currentMonth = now.format(DateTimeFormatter.ofPattern("yyyy-MM"));
         String yearMonth = now.format(YM_FMT);
 
-        List<DeliveryStats> statsList = deliveryStatsMapper.findByYearMonth(yearMonth);
+        List<DeliveryStats> statsList = deliveryStatsMapper.findByYearMonth(yearMonth, null);
 
         for (DeliveryStats stats : statsList) {
             String materialCode = stats.getMaterialCode();
+            Long companyId = stats.getCompanyId();
             if (materialCode == null || materialCode.isBlank()) continue;
 
-            int deliveryQty = deliveryRecordMapper.countByMaterialCodeAndMonth(materialCode, currentMonth);
-            int machineOnQty = originalRecordMapper.countByMaterialCodeAndMonth(materialCode, currentMonth);
-            int repairQty = originalRecordMapper.countRepairByMaterialCodeAndMonth(materialCode, currentMonth);
+            int deliveryQty = deliveryRecordMapper.countByMaterialCodeAndMonth(materialCode, currentMonth, companyId);
+            int machineOnQty = originalRecordMapper.countByMaterialCodeAndMonth(materialCode, currentMonth, companyId);
+            int repairQty = originalRecordMapper.countRepairByMaterialCodeAndMonth(materialCode, currentMonth, companyId);
 
             stats.setDeliveryQuantity(deliveryQty);
             stats.setMachineOnQuantity(machineOnQty);
@@ -119,7 +120,7 @@ public class DeliveryStatsScheduler {
 
             dailyMapper.deleteByStatId(stats.getId());
             List<Map<String, Object>> dailyCounts =
-                    deliveryRecordMapper.countDailyByMaterialCodeAndMonth(materialCode, currentMonth);
+                    deliveryRecordMapper.countDailyByMaterialCodeAndMonth(materialCode, currentMonth, companyId);
             Map<Integer, Integer> dayMap = new HashMap<>();
             for (Map<String, Object> row : dailyCounts) {
                 Number day = (Number) row.get("day");

@@ -58,7 +58,9 @@
       <el-table-column prop="systemName" label="系统名称" width="120" show-overflow-tooltip />
       <el-table-column prop="partName" label="配件名称" width="120" show-overflow-tooltip />
       <el-table-column prop="unitUsage" label="单台机用量" width="100" />
-      <el-table-column prop="ratio" label="比例(%)" width="80" />
+      <el-table-column prop="ratio" label="比例(%)" width="100">
+        <template #default="{ row }">{{ row.ratio != null ? (row.ratio * 100).toFixed(2) + '%' : '' }}</template>
+      </el-table-column>
       <el-table-column prop="unitPriceWithTax" label="含税单价" width="100" />
       <el-table-column prop="machineCount" label="机台数" width="80" />
       <el-table-column prop="deliveryQuantity" label="送货数量" width="90" />
@@ -139,7 +141,9 @@
           </el-col>
           <el-col :span="8">
             <el-form-item label="比例(%)" prop="ratio">
-              <el-input-number v-model="form.ratio" :precision="2" :min="0" style="width: 100%" />
+              <el-input-number v-model="form.ratio" :precision="2" :min="0" style="width: 100%">
+                <template #suffix><span style="color:#909399">%</span></template>
+              </el-input-number>
             </el-form-item>
           </el-col>
           <el-col :span="8">
@@ -399,6 +403,7 @@ async function handleEdit(row) {
   isEdit.value = true; isCopy.value = false
   const res = await api.getDetail(row.id)
   Object.assign(form, res.data)
+  if (form.ratio != null) form.ratio = form.ratio * 100
   try {
     const dailiesRes = await api.getDailies(row.id)
     const existingDailies = dailiesRes.data || []
@@ -413,6 +418,7 @@ async function handleCopy(row) {
   isEdit.value = false; isCopy.value = true
   const res = await api.getDetail(row.id)
   Object.assign(form, { ...res.data, id: null })
+  if (form.ratio != null) form.ratio = form.ratio * 100
   try {
     const dailiesRes = await api.getDailies(row.id)
     const existingDailies = dailiesRes.data || []
@@ -459,7 +465,7 @@ async function handleSystemNameSelect(item) {
 async function triggerAutoFill() {
   if (!form.materialCode || !form.statDate) return
   try {
-    const res = await api.autoFill(form.materialCode, form.statDate)
+    const res = await api.autoFill(form.materialCode, form.statDate, companyStore.currentCompanyId)
     const d = res.data
     // 回填156项数据
     if (d.from156) {
@@ -467,7 +473,7 @@ async function triggerAutoFill() {
       form.systemName = form.systemName || d.from156.systemName || ''
       form.partName = d.from156.partName || ''
       form.unitUsage = d.from156.unitUsage ?? null
-      form.ratio = d.from156.ratio ?? null
+      form.ratio = d.from156.ratio != null ? d.from156.ratio * 100 : null
       form.unitPriceWithTax = d.from156.unitPriceWithTax ?? null
     }
     // 回填统计数据
@@ -491,6 +497,7 @@ async function handleSubmit() {
   submitLoading.value = true
   try {
     const data = { ...form, dailies: dailies.value, companyId: companyStore.currentCompanyId }
+    if (data.ratio != null) data.ratio = data.ratio / 100
     delete data.id
     if (isEdit.value) {
       await api.update(form.id, data)
@@ -511,7 +518,7 @@ const refreshMonth = ref('')
 async function handleBatchRefresh() {
   if (!refreshMonth.value) { ElMessage.warning('请先选择要更新的月份'); return }
   try {
-    const res = await api.batchRefresh(refreshMonth.value)
+    const res = await api.batchRefresh(refreshMonth.value, companyStore.currentCompanyId)
     ElMessage.success(res.data?.msg || '更新完成')
     doFetch()
     fetchTotals()
@@ -539,7 +546,7 @@ async function handleVoiceParse() {
     }
     for (const [k, v] of Object.entries(fields)) {
       if (fm[k] && v) {
-        if (['unitUsage', 'ratio', 'unitPriceWithTax'].includes(k)) { const n = parseFloat(v); if (!isNaN(n)) form[fm[k]] = n }
+        if (['unitUsage', 'ratio', 'unitPriceWithTax'].includes(k)) { const n = parseFloat(v); if (!isNaN(n)) form[fm[k]] = k === 'ratio' ? n * 100 : n }
         else if (['machineCount', 'deliveryQuantity', 'machineOnQuantity', 'monthRepair'].includes(k)) { const n = parseInt(v); if (!isNaN(n)) form[fm[k]] = n }
         else form[fm[k]] = v
       }

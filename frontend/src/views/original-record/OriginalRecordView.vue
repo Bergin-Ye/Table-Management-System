@@ -232,18 +232,30 @@
             </el-form-item>
           </el-col>
         </el-row>
+        <el-form-item label="OCR图片识别">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <el-upload
+              :auto-upload="false"
+              list-type="picture"
+              :limit="1"
+              accept="image/jpeg,image/png"
+              :before-upload="beforeOcrUpload"
+              :on-change="handleOcrFileChange"
+              :on-exceed="handleOcrExceed"
+              :file-list="ocrFileList"
+              :disabled="ocrLoading"
+            >
+              <el-button type="primary" :disabled="ocrLoading">选择图片</el-button>
+              <template #tip>
+                <div style="font-size:12px;color:#909399;margin-top:4px">支持 jpg/png，大小不超过 10MB</div>
+              </template>
+            </el-upload>
+            <el-button type="primary" @click="handleOcrRecognize" :loading="ocrLoading" :disabled="!ocrImageFile">AI解析</el-button>
+          </div>
+        </el-form-item>
         <el-form-item label="语音输入">
           <el-input v-model="voiceText" type="textarea" :rows="3" :placeholder="voicePlaceholder" />
           <el-button type="primary" size="small" style="margin-top:8px" @click="handleVoiceParse" :loading="voiceLoading">解析</el-button>
-        </el-form-item>
-        <el-form-item>
-          <el-button link type="primary" @click="handleOcrUpload">
-            <el-icon><Camera /></el-icon>
-            OCR图片识别填充
-          </el-button>
-          <span v-if="ocrConfidence !== null" style="margin-left: 12px; color: #909399; font-size: 12px;">
-            识别完成 — 已填充 {{ ocrFilledCount }} 个字段（部分手写字段可能不准，请核对后提交）
-          </span>
         </el-form-item>
       </el-form>
       <template #footer>
@@ -257,10 +269,9 @@
 <script setup>
 import { ref, reactive, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Camera } from '@element-plus/icons-vue'
 import * as api from '../../api/original-record'
-import * as ocrApi from '../../api/ocr'
 import { parseVoiceText } from '../../api/voice-parse'
+import { recognizeOcr } from '../../api/ocr'
 import { search as search156Api } from '../../api/base-material-156'
 import { useCompanyStore } from '../../stores/company'
 import { usePagination } from '../../composables/usePagination'
@@ -469,6 +480,23 @@ async function handleTemplateDownload() {
   } catch { /* error handled */ }
 }
 
+// 字段映射（语音识别 & OCR 识别共用）
+const fieldMap = {
+  recordDate: 'recordDate', shift: 'shift', factory: 'factory',
+  serialNumber: 'serialNumber', machineNo: 'machineNo', machineModel: 'machineModel',
+  diagnostician: 'diagnostician', repairPerson: 'repairPerson', confirmer: 'confirmer',
+  repairRequestTime: 'repairRequestTime', startTime: 'startTime', endTime: 'endTime',
+  faultPhenomenon: 'faultPhenomenon', faultDescription: 'faultDescription',
+  materialCode: 'materialCode', partName: 'partName', quantity: 'quantity',
+  machineOnMaterial: 'machineOnMaterial', machineOffMaterial: 'machineOffMaterial',
+  remark: 'remark', deliveryRecordRef: 'deliveryRecordRef'
+}
+
+// OCR 图片识别
+const ocrImageFile = ref(null)
+const ocrLoading = ref(false)
+const ocrFileList = ref([])
+
 // 语音输入
 const voiceText = ref('')
 const voiceLoading = ref(false)
@@ -482,22 +510,15 @@ async function handleVoiceParse() {
     const fields = res.data.fields || {}
     const filledCount = res.data.filledCount || 0
     if (filledCount === 0) { ElMessage.warning('未识别到有效字段，请检查格式'); return }
-    const fieldMap = {
-      recordDate: 'recordDate', shift: 'shift', factory: 'factory',
-      serialNumber: 'serialNumber', machineNo: 'machineNo', machineModel: 'machineModel',
-      diagnostician: 'diagnostician', repairPerson: 'repairPerson', confirmer: 'confirmer',
-      repairRequestTime: 'repairRequestTime', startTime: 'startTime', endTime: 'endTime',
-      faultPhenomenon: 'faultPhenomenon', faultDescription: 'faultDescription',
-      materialCode: 'materialCode', partName: 'partName', quantity: 'quantity',
-      machineOnMaterial: 'machineOnMaterial', machineOffMaterial: 'machineOffMaterial',
-      remark: 'remark', deliveryRecordRef: 'deliveryRecordRef'
-    }
     for (const [k, v] of Object.entries(fields)) {
       if (fieldMap[k] && v) {
         if (k === 'quantity') { const n = parseInt(v); if (!isNaN(n)) form[fieldMap[k]] = n }
         else if (['repairRequestTime', 'startTime', 'endTime'].includes(k)) {
           const m = v.match(/(\d{1,2})时(\d{1,2})?/)
           if (m) form[fieldMap[k]] = m[1].padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0')
+        }
+        else if (k === 'recordDate') {
+          form[fieldMap[k]] = convertDate(v)
         }
         else form[fieldMap[k]] = v
       }
@@ -507,75 +528,55 @@ async function handleVoiceParse() {
   finally { voiceLoading.value = false }
 }
 
-// OCR 识别填充
-const ocrConfidence = ref(null)    // null=未使用, number=平均置信度
-const ocrFilledCount = ref(0)
+function convertDate(str) {
+  const m = str.match(/(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日/)
+  if (m) return m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0')
+  return str
+}
 
-async function handleOcrUpload() {
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*'
-  input.onchange = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const loading = ElMessage({ message: '正在识别图片...', type: 'info', duration: 0 })
-    try {
-      const res = await ocrApi.recognize(file)
-      const d = res.data
-      const fields = d.fields || {}
-      const fieldNames = Object.keys(fields)
 
-      if (fieldNames.length === 0) {
-        ElMessage.warning('未能识别到任何字段，请检查图片是否清晰')
-        return
-      }
+// OCR 图片识别
+function handleOcrFileChange(uploadFile, uploadFiles) {
+  ocrFileList.value = uploadFiles
+  ocrImageFile.value = uploadFiles.length > 0 ? uploadFiles[0].raw : null
+}
 
-      // 前端字段名映射 (OCR返回的key -> form字段名)
-      const fieldMap = {
-        factory: 'factory',
-        machineNo: 'machineNo',
-        repairRequestTime: 'repairRequestTime',
-        startTime: 'startTime',
-        endTime: 'endTime',
-        faultPhenomenon: 'faultPhenomenon',
-        faultDescription: 'faultDescription',
-        materialCode: 'materialCode',
-        partName: 'partName',
-        quantity: 'quantity',
-        confirmer: 'confirmer',
-        diagnostician: 'diagnostician',
-        repairPerson: 'repairPerson'
-      }
+function handleOcrExceed() {
+  ElMessage.warning('请先移除当前图片再上传')
+}
 
-      let filled = 0
-      for (const [ocrKey, formKey] of Object.entries(fieldMap)) {
-        if (fields[ocrKey]) {
-          // 时间字段只取时间部分 HH:mm
-          if (['repairRequestTime', 'startTime', 'endTime'].includes(formKey)) {
-            const timeMatch = fields[ocrKey].match(/(\d{1,2})(?:时|:)(\d{1,2})/)
-            if (timeMatch) {
-              form[formKey] = timeMatch[1].padStart(2, '0') + ':' + timeMatch[2].padStart(2, '0')
-            }
-          } else if (formKey === 'quantity') {
-            const num = parseInt(fields[ocrKey])
-            if (!isNaN(num)) form[formKey] = num
-          } else {
-            form[formKey] = fields[ocrKey]
-          }
-          filled++
+function beforeOcrUpload(file) {
+  const isImage = file.type === 'image/jpeg' || file.type === 'image/png'
+  const isLt10M = file.size / 1024 / 1024 < 10
+  if (!isImage) { ElMessage.error('仅支持 jpg/png 格式'); return false }
+  if (!isLt10M) { ElMessage.error('图片大小不能超过 10MB'); return false }
+  return false
+}
+
+async function handleOcrRecognize() {
+  if (!ocrImageFile.value) { ElMessage.warning('请先选择图片'); return }
+  ocrLoading.value = true
+  try {
+    const res = await recognizeOcr(ocrImageFile.value)
+    const fields = res.data.fields || {}
+    const filledCount = res.data.filledCount || 0
+    if (filledCount === 0) { ElMessage.warning('未识别到有效字段'); return }
+    for (const [k, v] of Object.entries(fields)) {
+      if (fieldMap[k] && v) {
+        if (k === 'quantity') { const n = parseInt(v); if (!isNaN(n)) form[fieldMap[k]] = n }
+        else if (['repairRequestTime', 'startTime', 'endTime'].includes(k)) {
+          const m = v.match(/(\d{1,2})时(\d{1,2})?/)
+          if (m) form[fieldMap[k]] = m[1].padStart(2, '0') + ':' + (m[2] || '00').padStart(2, '0')
         }
+        else if (k === 'recordDate') {
+          form[fieldMap[k]] = convertDate(v)
+        }
+        else form[fieldMap[k]] = v
       }
-
-      ocrFilledCount.value = filled
-      ocrConfidence.value = filled > 0 ? 85 : null // 大致置信度提示
-      ElMessage.success(`OCR 识别完成，已填充 ${filled} 个字段，请核对后提交`)
-    } catch (err) {
-      ElMessage.error('OCR 识别失败，请重试')
-    } finally {
-      loading.close()
     }
-  }
-  input.click()
+    ElMessage.success(`已填充 ${filledCount} 个字段，请核对`)
+  } catch { ElMessage.error('OCR识别失败') }
+  finally { ocrLoading.value = false }
 }
 
 onMounted(() => doFetch())

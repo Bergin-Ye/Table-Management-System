@@ -59,10 +59,11 @@ public class BaseMaterial156Service {
 
     @Transactional
     public BaseMaterial156 create(BaseMaterial156 record) {
-        // 料号唯一性校验
+        // 料号唯一性校验（含公司ID）
         if (record.getMaterialCode() != null && !record.getMaterialCode().isBlank()) {
-            if (mapper.countByMaterialCode(record.getMaterialCode()) > 0) {
-                throw new BizException("料号 '" + record.getMaterialCode() + "' 已存在");
+            Long cid = record.getCompanyId() != null ? record.getCompanyId() : 1L;
+            if (mapper.countByMaterialCode(record.getMaterialCode(), cid) > 0) {
+                throw new BizException("料号 '" + record.getMaterialCode() + "' 在当前公司已存在");
             }
         }
         String user = ServiceHelper.getCurrentUserName();
@@ -76,11 +77,12 @@ public class BaseMaterial156Service {
     public BaseMaterial156 update(BaseMaterial156 record) {
         BaseMaterial156 exist = getById(record.getId());
         ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "编辑");
-        // 料号唯一性校验（排除自身）
+        // 料号唯一性校验（排除自身，含公司ID）
         if (record.getMaterialCode() != null && !record.getMaterialCode().isBlank()
                 && !record.getMaterialCode().equals(exist.getMaterialCode())) {
-            if (mapper.countByMaterialCode(record.getMaterialCode()) > 0) {
-                throw new BizException("料号 '" + record.getMaterialCode() + "' 已存在");
+            Long cid = record.getCompanyId() != null ? record.getCompanyId() : exist.getCompanyId() != null ? exist.getCompanyId() : 1L;
+            if (mapper.countByMaterialCode(record.getMaterialCode(), cid) > 0) {
+                throw new BizException("料号 '" + record.getMaterialCode() + "' 在当前公司已存在");
             }
         }
         record.setUpdatedBy(ServiceHelper.getCurrentUserName());
@@ -127,7 +129,7 @@ public class BaseMaterial156Service {
                             counts[2]++;
                             return;
                         }
-                        if (mapper.countByMaterialCode(data.getMaterialCode()) > 0) {
+                        if (mapper.countByMaterialCode(data.getMaterialCode(), companyId != null ? companyId : 1L) > 0) {
                             failDetails.add(new ImportResultDTO.FailDetail(counts[0],
                                     "料号 '" + data.getMaterialCode() + "' 已存在"));
                             counts[2]++;
@@ -137,6 +139,13 @@ public class BaseMaterial156Service {
                         data.setCompanyId(companyId != null ? companyId : 1L);
                         data.setCreatedBy(user);
                         data.setUpdatedBy(user);
+                        // Handle percentage: if ratio is 0~1 range keep as-is, if > 1 divide by 100
+                        if (data.getRatio() != null) {
+                            java.math.BigDecimal r = data.getRatio();
+                            if (r.compareTo(java.math.BigDecimal.ONE) > 0) {
+                                data.setRatio(r.divide(java.math.BigDecimal.valueOf(100), 4, java.math.RoundingMode.HALF_UP));
+                            }
+                        }
                         batch.add(data);
                         if (batch.size() >= IMPORT_BATCH_SIZE) flushBatch(batch, counts);
                     } catch (Exception e) {

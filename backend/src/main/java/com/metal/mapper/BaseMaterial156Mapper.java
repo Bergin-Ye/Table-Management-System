@@ -10,8 +10,8 @@ public interface BaseMaterial156Mapper {
     @Select("SELECT * FROM base_material_156 WHERE id = #{id}")
     BaseMaterial156 findById(Long id);
 
-    @Select("SELECT COUNT(*) FROM base_material_156 WHERE material_code = #{materialCode}")
-    int countByMaterialCode(@Param("materialCode") String materialCode);
+    @Select("SELECT COUNT(*) FROM base_material_156 WHERE material_code = #{materialCode} AND company_id = #{companyId}")
+    int countByMaterialCode(@Param("materialCode") String materialCode, @Param("companyId") Long companyId);
 
     @Insert("INSERT INTO base_material_156 (company_id, category, material_code, system_name, part_name, " +
             "unit_usage, ratio, unit_price_with_tax, created_by, updated_by) " +

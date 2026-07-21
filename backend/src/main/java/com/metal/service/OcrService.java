@@ -1,357 +1,296 @@
 package com.metal.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.metal.config.OcrConfig;
-import com.metal.common.BizException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 
-import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+import java.io.IOException;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.time.Duration;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Base64;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+/**
+ * 通义千问 Qwen3.5-OCR 图片识别服务
+ * 使用 DashScope OpenAI兼容API，将维修工单图片中的手写/印刷文字提取为结构化字段
+ */
 @Service
 public class OcrService {
 
-    private final OcrConfig ocrConfig;
-    private final HttpClient httpClient;
-    private final ObjectMapper objectMapper;
+    private static final Logger log = LoggerFactory.getLogger(OcrService.class);
 
-    public OcrService(OcrConfig ocrConfig) {
-        this.ocrConfig = ocrConfig;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
+    @Value("${ocr.dashscope.api-key:}")
+    private String apiKey;
+
+    private static final String API_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
+    private static final String MODEL = "qwen3.5-ocr";
+    private static final Duration TIMEOUT = Duration.ofSeconds(60);
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final HttpClient httpClient = HttpClient.newBuilder()
+            .connectTimeout(TIMEOUT)
+            .build();
+
+    /**
+     * 识别工单图片，返回结构化字段映射
+     */
+    public Map<String, Object> recognize(MultipartFile image) throws IOException {
+        // 1. 读取图片并转为 base64
+        byte[] imageBytes = image.getBytes();
+        String contentType = image.getContentType();
+        if (contentType == null || !contentType.startsWith("image/")) {
+            contentType = "image/jpeg";
+        }
+        String base64Image = Base64.getEncoder().encodeToString(imageBytes);
+        String imageUrl = "data:" + contentType + ";base64," + base64Image;
+
+        // 2. 构建请求
+        String systemPrompt = buildSystemPrompt();
+        String requestBody = buildRequestBody(imageUrl, systemPrompt);
+
+        log.info("OCR 请求发送, 图片大小: {} bytes", imageBytes.length);
+
+        // 3. 调用 API
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(API_URL))
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer " + apiKey)
+                .timeout(TIMEOUT)
+                .POST(HttpRequest.BodyPublishers.ofString(requestBody))
                 .build();
-        this.objectMapper = new ObjectMapper();
-    }
 
-    // ==================== 公开方法 ====================
-
-    /**
-     * OCR 识别图片，返回结构化字段
-     */
-    public Map<String, Object> recognize(byte[] imageBytes) {
         try {
-            // 1. 调用阿里云 OCR
-            String responseJson = callOcrApi(imageBytes);
-            JsonNode root = objectMapper.readTree(responseJson);
+            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            log.info("OCR 响应状态: {}, 长度: {}", response.statusCode(),
+                    response.body() != null ? response.body().length() : 0);
 
-            // 2. 提取文字块
-            JsonNode blocks = root.at("/Data/SubImages/0/BlockInfo/BlockDetails");
-            String fullText = root.path("Data").path("Content").asText("");
-
-            if (blocks.isEmpty()) {
-                throw new BizException("OCR 识别失败，未返回文字块");
+            if (response.statusCode() != 200) {
+                log.error("OCR API 错误: {}", response.body());
+                return errorResult("OCR 服务返回错误: HTTP " + response.statusCode());
             }
 
-            // 3. 文字块 → 字段映射
-            Map<String, String> fields = extractFields(blocks);
-
-            // 4. 构造返回
-            Map<String, Object> result = new LinkedHashMap<>();
-            result.put("fields", fields);
-            result.put("rawText", fullText);
-            result.put("blockCount", blocks.size());
-            return result;
-
-        } catch (BizException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new BizException("OCR 识别异常: " + e.getMessage());
+            // 4. 解析响应
+            return parseResponse(response.body());
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return errorResult("OCR 请求被中断");
+        } catch (IOException e) {
+            log.error("OCR 请求失败", e);
+            return errorResult("OCR 服务请求失败: " + e.getMessage());
         }
     }
-
-    // ==================== API 调用 ====================
-
-    private String callOcrApi(byte[] imageBytes) throws Exception {
-        String now = ZonedDateTime.now(ZoneId.of("UTC"))
-                .format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'Z'"));
-        String nonce = UUID.randomUUID().toString();
-        String hashedBody = sha256Hex(imageBytes);
-
-        // 构建请求头
-        Map<String, String> headers = new LinkedHashMap<>();
-        headers.put("host", ocrConfig.getEndpoint());
-        headers.put("x-acs-version", "2021-07-07");
-        headers.put("x-acs-action", "RecognizeAllText");
-        headers.put("x-acs-date", now);
-        headers.put("x-acs-signature-nonce", nonce);
-        headers.put("x-acs-content-sha256", hashedBody);
-        headers.put("content-type", "application/octet-stream");
-
-        // ACS3 签名
-        String auth = signRequest(headers, imageBytes);
-        headers.put("Authorization", auth);
-
-        // 构建 HTTP 请求（host 头由 HttpClient 自动管理，不能手动设置）
-        String query = "Type=Advanced";
-        String url = "https://" + ocrConfig.getEndpoint() + "/?" + query;
-
-        HttpRequest.Builder requestBuilder = HttpRequest.newBuilder()
-                .uri(URI.create(url))
-                .POST(HttpRequest.BodyPublishers.ofByteArray(imageBytes))
-                .timeout(Duration.ofSeconds(30));
-
-        headers.forEach((k, v) -> {
-            if (!"host".equalsIgnoreCase(k)) {
-                requestBuilder.header(k, v);
-            }
-        });
-
-        HttpRequest request = requestBuilder.build();
-        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-
-        if (response.statusCode() != 200) {
-            throw new BizException("OCR 接口返回错误: HTTP " + response.statusCode() + " " + response.body());
-        }
-
-        return response.body();
-    }
-
-    // ==================== ACS3-HMAC-SHA256 签名 ====================
-
-    private String signRequest(Map<String, String> headers, byte[] body) throws Exception {
-        // 排序 header key
-        List<String> sortedNames = new ArrayList<>(headers.keySet());
-        Collections.sort(sortedNames);
-
-        String signedHeaders = String.join(";", sortedNames);
-
-        StringBuilder canonicalHeaders = new StringBuilder();
-        for (String name : sortedNames) {
-            canonicalHeaders.append(name).append(":").append(headers.get(name).trim()).append("\n");
-        }
-
-        String hashedPayload = sha256Hex(body);
-
-        String canonicalRequest = "POST\n/\nType=Advanced\n"
-                + canonicalHeaders + "\n"
-                + signedHeaders + "\n"
-                + hashedPayload;
-
-        String hashedCanonical = sha256Hex(canonicalRequest.getBytes(StandardCharsets.UTF_8));
-        String stringToSign = "ACS3-HMAC-SHA256\n" + hashedCanonical;
-        String signature = hmacSha256Hex(ocrConfig.getAccessKeySecret(), stringToSign);
-
-        return "ACS3-HMAC-SHA256 Credential=" + ocrConfig.getAccessKeyId()
-                + ",SignedHeaders=" + signedHeaders
-                + ",Signature=" + signature;
-    }
-
-    // ==================== 字段提取 ====================
 
     /**
-     * 标签锚点匹配：在文字块数组中找标签，取其后非标签块作为值。
-     * 策略：
-     *   - "确认人"出现多次 → 取最后一次
-     *   - "结束时间"区分诊断结束/维修结束 → 优先维修结束时间
-     *   - 涉及表格行（数量/编码/部件名），走表格策略
+     * 构建系统提示词 - 针对金属厂维修工单优化
      */
-    private Map<String, String> extractFields(JsonNode blocks) {
-        // 先收集所有文字块
-        List<TextBlock> blockList = new ArrayList<>();
-        for (JsonNode b : blocks) {
-            blockList.add(new TextBlock(
-                    b.path("BlockContent").asText(""),
-                    b.path("BlockConfidence").asInt(0)
-            ));
+    private String buildSystemPrompt() {
+        return "你是一个工厂维修工单OCR数据提取助手。请仔细识别图片中的所有文字（包括手写和印刷），" +
+                "提取以下字段信息并以纯JSON格式返回。\n\n" +
+                "字段说明（只提取图片中实际存在的字段，没有的设为空字符串\"\"）：\n" +
+                "- recordDate: 日期，统一转为 YYYY-MM-DD 格式（如 2026-07-21）\n" +
+                "- shift: 班次（白班 或 夜班）\n" +
+                "- factory: 厂房/车间（如 A、A3、B、C）\n" +
+                "- serialNumber: 序号/编号/故障维修序号\n" +
+                "- machineNo: 机台号/设备编号\n" +
+                "- machineModel: 机型/设备出厂编号（如 FANUC、西门子等）\n" +
+                "- diagnostician: 诊断人姓名\n" +
+                "- repairPerson: 维修人姓名\n" +
+                "- confirmer: 确认人姓名\n" +
+                "- repairRequestTime: 故障时间/报修时间，统一转为 HH:mm 格式（如 15:30，无分钟则补:00）\n" +
+                "- startTime: 开始维修时间/接单时间，格式同上\n" +
+                "- endTime: 维修结束时间/诊断结束时间，格式同上\n" +
+                "- faultPhenomenon: 故障现象描述\n" +
+                "- faultDescription: 维修描述/维修方案/故障原因分析及维修方案\n" +
+                "- materialCode: 物料编码/料号/配件编码\n" +
+                "- partName: 零件名称/配件名称/使用的配件\n" +
+                "- quantity: 数量（纯数字，如 1、2、3）\n" +
+                "- machineOnMaterial: 上机物料号（装上的配件编码，标记\"装\"或\"上机\"）\n" +
+                "- machineOffMaterial: 下机物料号（拆下的配件编码，标记\"拆\"或\"下机\"）\n" +
+                "- remark: 备注信息\n" +
+                "- deliveryRecordRef: 送货记录引用号\n\n" +
+                "重要规则：\n" +
+                "1. 只提取图片中实际存在的字段，没有的设为空字符串\"\"，严禁编造\n" +
+                "2. 手写文字要仔细辨认，结合上下文推断，但不确定的就留空\n" +
+                "3. 日期务必统一为 YYYY-MM-DD 格式（月份和日期补零）\n" +
+                "4. 时间务必统一为 HH:mm 格式，如遇到\"20时00分\"转为\"20:00\"，\"20时\"转为\"20:00\"\n" +
+                "5. 中文姓名只取2-3个字的人名，不要带职务或括号\n" +
+                "6. 配件编码要完整，包括前缀和数字（如 26T3-0467、J524111330）\n" +
+                "7. 返回纯JSON对象，不要用markdown代码块```json```包裹，不要加任何解释文字\n" +
+                "8. 如果图片中有\"装：XXX\"和\"拆：YYY\"，分别填入上机物料号和下机物料号";
+    }
+
+    /**
+     * 构建请求体 JSON
+     */
+    private String buildRequestBody(String imageUrl, String prompt) {
+        try {
+            Map<String, Object> content1 = new LinkedHashMap<>();
+            content1.put("type", "image_url");
+            Map<String, String> imageUrlMap = new LinkedHashMap<>();
+            imageUrlMap.put("url", imageUrl);
+            content1.put("image_url", imageUrlMap);
+
+            Map<String, Object> content2 = new LinkedHashMap<>();
+            content2.put("type", "text");
+            content2.put("text", prompt);
+
+            Map<String, Object> message = new LinkedHashMap<>();
+            message.put("role", "user");
+            message.put("content", new Object[]{content1, content2});
+
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("model", MODEL);
+            body.put("messages", new Object[]{message});
+
+            return objectMapper.writeValueAsString(body);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("构建OCR请求失败", e);
         }
+    }
 
-        Map<String, String> result = new LinkedHashMap<>();
+    /**
+     * 解析 API 响应，提取 JSON 字段
+     */
+    private Map<String, Object> parseResponse(String responseBody) {
+        Map<String, Object> result = new LinkedHashMap<>();
 
-        // === 单值标签：标签后第一个有效文字块 ===
-        Map<String, String[]> singleLabels = new LinkedHashMap<>();
-        singleLabels.put("machineNo", new String[]{"机台号"});
-        singleLabels.put("repairRequestTime", new String[]{"报障时间", "报修时间"});
-        singleLabels.put("startTime", new String[]{"接单时间"});
-        singleLabels.put("faultPhenomenon", new String[]{"故障描述", "故障现象"});
-        singleLabels.put("faultDescription", new String[]{"故障原因", "分析及维修"});
+        try {
+            JsonNode root = objectMapper.readTree(responseBody);
+            JsonNode choices = root.get("choices");
+            if (choices == null || !choices.isArray() || choices.size() == 0) {
+                log.error("OCR 响应无 choices: {}", responseBody);
+                return errorResult("OCR 返回数据格式异常");
+            }
 
-        for (Map.Entry<String, String[]> entry : singleLabels.entrySet()) {
-            String value = findValueAfterLabel(blockList, entry.getValue(), false);
-            if (value != null) result.put(entry.getKey(), value);
+            String content = choices.get(0).get("message").get("content").asText();
+            log.info("OCR 原始内容长度: {}", content != null ? content.length() : 0);
+
+            // 尝试从内容中提取JSON对象
+            Map<String, String> fields = extractJsonFields(content);
+            result.put("fields", fields);
+
+            // 计算已填充字段数
+            long filledCount = fields.values().stream().filter(v -> v != null && !v.isBlank()).count();
+            result.put("filledCount", (int) filledCount);
+            result.put("rawText", content);
+
+        } catch (JsonProcessingException e) {
+            log.error("OCR 响应解析失败", e);
+            return errorResult("OCR 响应解析失败: " + e.getMessage());
         }
-
-        // === 多值标签（取最后一次出现）===
-        Map<String, String[]> lastOccurrenceLabels = new LinkedHashMap<>();
-        lastOccurrenceLabels.put("confirmer", new String[]{"确认人"});
-        lastOccurrenceLabels.put("diagnostician", new String[]{"诊断人"});
-        lastOccurrenceLabels.put("repairPerson", new String[]{"维修人"});
-        lastOccurrenceLabels.put("factory", new String[]{"厂房", "车间"});
-
-        for (Map.Entry<String, String[]> entry : lastOccurrenceLabels.entrySet()) {
-            String value = findValueAfterLabel(blockList, entry.getValue(), true);
-            if (value != null) result.put(entry.getKey(), value);
-        }
-
-        // === 结束时间：优先"维修结束时间"，其次"诊断结束时间" ===
-        String endTime = findValueAfterLabelWithPriority(blockList,
-                new String[]{"维修结束时间"}, new String[]{"诊断结束时间", "结束时间"});
-        if (endTime != null) result.put("endTime", endTime);
-
-        // === 表格区域：配件编码/名称/数量 ===
-        // 在"配件编码"之后的文字块区域找编码、名称、数量
-        extractTableFields(blockList, result);
 
         return result;
     }
 
-    /** 找标签后的第一个有效值 */
-    private String findValueAfterLabel(List<TextBlock> blocks, String[] keywords, boolean lastOccurrence) {
-        int foundIdx = -1;
-        if (lastOccurrence) {
-            for (int i = blocks.size() - 1; i >= 0; i--) {
-                if (containsAny(blocks.get(i).content, keywords)) {
-                    foundIdx = i;
-                    break;
-                }
-            }
+    /**
+     * 从模型返回的文本中提取JSON字段
+     * 模型可能返回纯JSON、markdown包裹的JSON、或混合文本
+     */
+    Map<String, String> extractJsonFields(String text) {
+        Map<String, String> fields = new LinkedHashMap<>();
+        if (text == null || text.isBlank()) return fields;
+
+        // 尝试提取JSON对象
+        String jsonStr = text.trim();
+
+        // 去掉markdown代码块包裹
+        Pattern mdPattern = Pattern.compile("```(?:json)?\\s*([\\s\\S]*?)\\s*```");
+        Matcher mdMatcher = mdPattern.matcher(jsonStr);
+        if (mdMatcher.find()) {
+            jsonStr = mdMatcher.group(1).trim();
+        }
+
+        // 查找第一个 { 到最后一个 }
+        int start = jsonStr.indexOf('{');
+        int end = jsonStr.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            jsonStr = jsonStr.substring(start, end + 1);
         } else {
-            for (int i = 0; i < blocks.size(); i++) {
-                if (containsAny(blocks.get(i).content, keywords)) {
-                    foundIdx = i;
-                    break;
-                }
-            }
-        }
-        if (foundIdx < 0) return null;
-        return findNextValidValue(blocks, foundIdx + 1);
-    }
-
-    /** 优先级匹配：先找 primary 标签，找不到才用 fallback */
-    private String findValueAfterLabelWithPriority(List<TextBlock> blocks, String[] primary, String[] fallback) {
-        String val = findValueAfterLabel(blocks, primary, false);
-        if (val != null) return val;
-        return findValueAfterLabel(blocks, fallback, false);
-    }
-
-    /** 表格区域提取 */
-    private void extractTableFields(List<TextBlock> blocks, Map<String, String> result) {
-        // 找"配件编码"标签位置，表格数据在它附近
-        int codeLabelIdx = -1;
-        for (int i = 0; i < blocks.size(); i++) {
-            if (blocks.get(i).content.contains("配件编码")) {
-                codeLabelIdx = i;
-                break;
-            }
-        }
-        if (codeLabelIdx < 0) return;
-
-        // 在"配件编码"之后 10 个文字块内找看起来像编码的值（字母数字组合，长度 > 4）
-        int end = Math.min(codeLabelIdx + 15, blocks.size());
-        for (int i = codeLabelIdx + 1; i < end; i++) {
-            String content = blocks.get(i).content;
-            int conf = blocks.get(i).confidence;
-            // 编码特征：包含字母和数字，长度 >= 5
-            if (conf >= 70 && content.matches(".*[A-Za-z].*[0-9].*") && content.length() >= 5) {
-                if (!result.containsKey("materialCode")) {
-                    result.put("materialCode", content);
-                }
-            }
+            // 不是JSON，尝试用关键词匹配方式解析
+            return parseKeywords(text);
         }
 
-        // 找"更换的部件"或"轴丝杆"取配件名称
-        int partLabelIdx = -1;
-        for (int i = 0; i < blocks.size(); i++) {
-            String c = blocks.get(i).content;
-            if (c.contains("更换的部件") || c.contains("诊断需要维修")) {
-                partLabelIdx = i;
-                break;
-            }
-        }
-        if (partLabelIdx >= 0) {
-            String partName = findNextValidValue(blocks, partLabelIdx + 1);
-            if (partName != null && !result.containsKey("partName")) {
-                result.put("partName", partName);
-            }
-        }
-
-        // 数量：在"数量"标签附近取数字型值
-        for (int i = codeLabelIdx; i < end; i++) {
-            if (blocks.get(i).content.equals("数量") || blocks.get(i).content.equals("数量")) {
-                String qty = findNextValidValue(blocks, i + 1);
-                if (qty != null && qty.matches("\\d+") && !result.containsKey("quantity")) {
-                    result.put("quantity", qty);
-                    break;
-                }
-            }
-        }
-    }
-
-    // ==================== 辅助方法 ====================
-
-    private String findNextValidValue(List<TextBlock> blocks, int startIdx) {
-        for (int i = startIdx; i < blocks.size(); i++) {
-            String content = blocks.get(i).content;
-            // 跳过明显不是值的块
-            if (isSkippable(content)) continue;
-            return content;
-        }
-        return null;
-    }
-
-    private boolean isSkippable(String content) {
-        if (content.isEmpty()) return true;
-        if (content.length() <= 1 && !content.matches("\\d")) return true;
-        Set<String> skip = Set.of("(", ")", "(如有)", "(填写)", "号", "称", ":", "：",
-                "(BYD)", "(场内)维", "口通过", "口不通过(");
-        if (skip.contains(content.trim())) return true;
-        if (content.startsWith("口")) return true;
-        return false;
-    }
-
-    private boolean containsAny(String text, String[] keywords) {
-        for (String kw : keywords) {
-            if (text.contains(kw)) return true;
-        }
-        return false;
-    }
-
-    // ==================== 加密工具 ====================
-
-    private String sha256Hex(byte[] data) {
         try {
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            byte[] hash = md.digest(data);
-            return bytesToHex(hash);
-        } catch (Exception e) {
-            throw new RuntimeException("SHA-256 error", e);
+            JsonNode root = objectMapper.readTree(jsonStr);
+            root.fields().forEachRemaining(entry -> {
+                String value = entry.getValue().asText();
+                if (value != null && !value.isBlank()) {
+                    fields.put(entry.getKey(), value.trim());
+                }
+            });
+        } catch (JsonProcessingException e) {
+            log.warn("JSON解析失败，降级为关键词匹配: {}", e.getMessage());
+            return parseKeywords(text);
         }
+
+        return fields;
     }
 
-    private String hmacSha256Hex(String key, String data) {
-        try {
-            Mac mac = Mac.getInstance("HmacSHA256");
-            SecretKeySpec spec = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
-            mac.init(spec);
-            byte[] hash = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-            return bytesToHex(hash);
-        } catch (Exception e) {
-            throw new RuntimeException("HMAC-SHA256 error", e);
+    /**
+     * 降级方案：用关键词匹配从文本中提取字段值
+     * 复用 VoiceParseService 的锚点匹配思路
+     */
+    private Map<String, String> parseKeywords(String text) {
+        Map<String, String> fields = new LinkedHashMap<>();
+        // 常见字段的关键词映射
+        String[][] mappings = {
+                {"日期", "recordDate"}, {"班次", "shift"}, {"厂房", "factory"}, {"车间", "factory"},
+                {"机台号", "machineNo"}, {"机型", "machineModel"}, {"诊断人", "diagnostician"},
+                {"维修人", "repairPerson"}, {"确认人", "confirmer"},
+                {"故障时间", "repairRequestTime"}, {"报修时间", "repairRequestTime"},
+                {"开始时间", "startTime"}, {"接单时间", "startTime"},
+                {"维修结束时间", "endTime"}, {"诊断结束时间", "endTime"}, {"结束时间", "endTime"},
+                {"故障现象", "faultPhenomenon"}, {"故障描述", "faultPhenomenon"},
+                {"维修描述", "faultDescription"}, {"维修方案", "faultDescription"},
+                {"故障原因分析及维修方案", "faultDescription"},
+                {"物料编码", "materialCode"}, {"料号", "materialCode"}, {"配件编码", "materialCode"},
+                {"配件名称", "partName"}, {"配件", "partName"}, {"使用的配件", "partName"},
+                {"数量", "quantity"}, {"备注", "remark"},
+                {"上机物料号", "machineOnMaterial"}, {"上机物料", "machineOnMaterial"},
+                {"下机物料号", "machineOffMaterial"}, {"下机物料", "machineOffMaterial"},
+                {"送货记录引用", "deliveryRecordRef"},
+                // 针对"装：XXX"和"拆：YYY"的匹配
+                {"装：", "machineOnMaterial"}, {"拆：", "machineOffMaterial"},
+        };
+
+        for (String[] mapping : mappings) {
+            String keyword = mapping[0];
+            String field = mapping[1];
+            int idx = text.indexOf(keyword);
+            if (idx >= 0) {
+                int valueStart = idx + keyword.length();
+                // 取到下一个常见分隔符
+                int valueEnd = text.length();
+                for (String delim : new String[]{"\n", "，", "。", "  ", "；", "\t"}) {
+                    int dIdx = text.indexOf(delim, valueStart);
+                    if (dIdx > 0 && dIdx < valueEnd) valueEnd = dIdx;
+                }
+                String value = text.substring(valueStart, Math.min(valueStart + 50, valueEnd)).trim();
+                if (!value.isEmpty()) {
+                    fields.put(field, value);
+                }
+            }
         }
+        return fields;
     }
 
-    private String bytesToHex(byte[] bytes) {
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
+    private Map<String, Object> errorResult(String message) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("fields", new LinkedHashMap<>());
+        result.put("filledCount", 0);
+        result.put("rawText", "");
+        result.put("error", message);
+        return result;
     }
-
-    // ==================== 内部类 ====================
-
-    private record TextBlock(String content, int confidence) {}
 }

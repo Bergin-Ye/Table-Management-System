@@ -61,7 +61,7 @@
             <el-icon><Notebook /></el-icon>
             <template #title>原始记录</template>
           </el-menu-item>
-          <el-menu-item index="/machine-material">
+          <el-menu-item index="/machine-material" v-if="authStore.isAdmin">
             <el-icon><Setting /></el-icon>
             <template #title>上机物料</template>
           </el-menu-item>

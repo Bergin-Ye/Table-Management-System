@@ -23,7 +23,9 @@
       <el-table-column prop="category" label="类别" width="100" />
       <el-table-column prop="partName" label="配件名称" width="120" show-overflow-tooltip />
       <el-table-column prop="unitUsage" label="单台用量" width="100" />
-      <el-table-column prop="ratio" label="比例" width="80" />
+      <el-table-column prop="ratio" label="比例(%)" width="100">
+        <template #default="{ row }">{{ row.ratio != null ? (row.ratio * 100).toFixed(2) + '%' : '' }}</template>
+      </el-table-column>
       <el-table-column prop="unitPriceWithTax" label="含税单价" width="110" />
       <el-table-column prop="warrantyPeriod" label="质保期" width="90" />
       <el-table-column prop="priceType" label="价格类型" width="100" />
@@ -72,8 +74,10 @@
         </el-row>
         <el-row :gutter="16">
           <el-col :span="12">
-            <el-form-item label="比例" prop="ratio">
-              <el-input-number v-model="form.ratio" :precision="2" :min="0" style="width: 100%" />
+            <el-form-item label="比例(%)" prop="ratio">
+              <el-input-number v-model="form.ratio" :precision="2" :min="0" style="width: 100%">
+                <template #suffix><span style="color:#909399">%</span></template>
+              </el-input-number>
             </el-form-item>
           </el-col>
           <el-col :span="12">
@@ -231,12 +235,14 @@ function handleAdd() { isEdit.value = false; isCopy.value = false; resetForm(); 
 async function handleEdit(row) {
   isEdit.value = true; isCopy.value = false
   const res = await api.getDetail(row.id); Object.assign(form, res.data)
+  if (form.ratio != null) form.ratio = form.ratio * 100
   dialogVisible.value = true
 }
 async function handleCopy(row) {
   isEdit.value = false; isCopy.value = true
   const res = await api.getDetail(row.id)
   Object.assign(form, { ...res.data, id: null })
+  if (form.ratio != null) form.ratio = form.ratio * 100
   dialogVisible.value = true
 }
 
@@ -246,6 +252,7 @@ async function handleSubmit() {
   submitLoading.value = true
   try {
     const data = { ...form, companyId: companyStore.currentCompanyId }
+    if (data.ratio != null) data.ratio = data.ratio / 100
     delete data.id
     if (isEdit.value) await api.update(form.id, data)
     else await api.create(data)
@@ -314,7 +321,7 @@ async function handleMaterialSelect(item) {
       form.category = d.category || ''
       form.partName = d.partName || ''
       form.unitUsage = d.unitUsage ?? null
-      form.ratio = d.ratio ?? null
+      form.ratio = d.ratio != null ? d.ratio * 100 : null
       form.unitPriceWithTax = d.unitPriceWithTax ?? null
     }
   } catch { /* 查不到就不回填 */ }
@@ -361,7 +368,7 @@ async function handleVoiceParse() {
     }
     for (const [k, v] of Object.entries(fields)) {
       if (fm[k] && v) {
-        if (['unitUsage', 'ratio', 'unitPriceWithTax'].includes(k)) { const n = parseFloat(v); if (!isNaN(n)) form[fm[k]] = n }
+        if (['unitUsage', 'ratio', 'unitPriceWithTax'].includes(k)) { const n = parseFloat(v); if (!isNaN(n)) form[fm[k]] = k === 'ratio' ? n * 100 : n }
         else if (k === 'settlementMachineCount') { const n = parseInt(v); if (!isNaN(n)) form[fm[k]] = n }
         else form[fm[k]] = v
       }

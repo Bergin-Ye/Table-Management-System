@@ -23,11 +23,12 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -138,6 +139,12 @@ public class OriginalRecordService {
                 public void invoke(OriginalRecord data, AnalysisContext ctx) {
                     counts[0]++;
                     try {
+                        // 修复时间字段：如果年份异常（≤1900），用recordDate重新构造日期部分
+                        LocalDate date = data.getRecordDate();
+                        data.setRepairRequestTime(fixTime(data.getRepairRequestTime(), date));
+                        data.setStartTime(fixTime(data.getStartTime(), date));
+                        data.setEndTime(fixTime(data.getEndTime(), date));
+
                         applyCalculations(data);
                         String user = ServiceHelper.getCurrentUserName();
                         data.setCompanyId(companyId != null ? companyId : 1L);
@@ -269,20 +276,48 @@ public class OriginalRecordService {
     }
 
     // =============== 自动计算 ===============
+    /**
+     * 修复 Excel 时间字段的日期异常（Excel 纯时间存储为 0~1 的序列号，
+     * EasyExcel 解析后日期部分为 1899-12-31），用 recordDate 替换日期部分。
+     */
+    private LocalDateTime fixTime(LocalDateTime dt, LocalDate date) {
+        if (dt == null || date == null) return dt;
+        if (dt.getYear() <= 1900) {
+            return LocalDateTime.of(date, dt.toLocalTime());
+        }
+        return dt;
+    }
+
     private void applyCalculations(OriginalRecord record) {
         // 年+月
         if (record.getRecordDate() != null) {
             record.setYearMonth(record.getRecordDate().format(YM_FMT));
         }
-        // 维修工时 = 结束时间 - 开始时间 (小时)
-        if (record.getStartTime() != null && record.getEndTime() != null) {
-            long minutes = Duration.between(record.getStartTime(), record.getEndTime()).toMinutes();
-            record.setRepairHours(BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP));
+        // 跨天修正 + 工时计算（单位：分钟）
+        LocalDateTime start = record.getStartTime();
+        LocalDateTime end = record.getEndTime();
+        LocalDateTime request = record.getRepairRequestTime();
+
+        // 跨天修正：如果结束时间早于开始时间或报修时间，自动加一天
+        if (end != null) {
+            if (start != null && end.isBefore(start)) {
+                end = end.plusDays(1);
+                record.setEndTime(end);
+            } else if (request != null && end.isBefore(request)) {
+                end = end.plusDays(1);
+                record.setEndTime(end);
+            }
         }
-        // 停机工时 = 结束时间 - 报修时间 (小时)
-        if (record.getRepairRequestTime() != null && record.getEndTime() != null) {
-            long minutes = Duration.between(record.getRepairRequestTime(), record.getEndTime()).toMinutes();
-            record.setDowntimeHours(BigDecimal.valueOf(minutes).divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP));
+
+        // 维修工时 = 结束时间 - 开始时间（分钟）
+        if (start != null && end != null) {
+            long minutes = Duration.between(start, end).toMinutes();
+            record.setRepairHours(BigDecimal.valueOf(minutes));
+        }
+        // 停机工时 = 结束时间 - 报修时间（分钟）
+        if (request != null && end != null) {
+            long minutes = Duration.between(request, end).toMinutes();
+            record.setDowntimeHours(BigDecimal.valueOf(minutes));
         }
         // 上次上机时间: 查询下机物料号上一次在上机物料列出现的日期
         if (record.getMachineOffMaterial() != null && !record.getMachineOffMaterial().isBlank()) {

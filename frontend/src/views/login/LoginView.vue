@@ -10,7 +10,6 @@
         <span class="header-company">昊昱精密</span>
       </div>
       <div class="header-right">
-        <el-button class="header-btn" text bg @click="$router.push('/login')">登录页面</el-button>
         <span class="header-support">
           <el-icon :size="16"><Phone /></el-icon>
           技术支持：0755-84586807
@@ -24,7 +23,7 @@
 
       <div class="login-right">
         <div class="login-area">
-          <h1 class="system-title">驻场维保数据分析平台</h1>
+          <h1 class="system-title">驻场维保数据采集平台</h1>
           <p class="system-subtitle">On-Site Maintenance Data Analysis Platform</p>
 
           <div class="login-card">
@@ -79,7 +78,7 @@
     <!-- 底部版权 -->
     <div class="login-footer">
       <span>Copyright &copy; {{ new Date().getFullYear() }}</span>
-      <a href="https://www.top-tpm.com/homepage" target="_blank" class="footer-link">昊昱精密</a>
+      <a href="https://www.top-tpm.com/homepage" target="_blank" class="footer-link">深圳市昊昱精密机电有限公司</a>
       <span>All Rights Reserved.</span>
     </div>
   </div>

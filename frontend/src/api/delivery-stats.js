@@ -42,12 +42,12 @@ export function exportExcel(params) {
   })
 }
 
-export function batchRefresh(yearMonth) {
-  return request.post('/delivery-stats/batch-refresh', { yearMonth, statMonth: yearMonth })
+export function batchRefresh(yearMonth, companyId) {
+  return request.post('/delivery-stats/batch-refresh', { yearMonth, statMonth: yearMonth, companyId })
 }
 
-export function autoFill(materialCode, statDate) {
-  return request.get('/delivery-stats/auto-fill', { params: { materialCode, statDate } })
+export function autoFill(materialCode, statDate, companyId) {
+  return request.get('/delivery-stats/auto-fill', { params: { materialCode, statDate, companyId } })
 }
 
 export function downloadTemplate() {

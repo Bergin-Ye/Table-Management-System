@@ -30,7 +30,7 @@ const routes = [
         path: 'machine-material',
         name: 'MachineMaterial',
         component: () => import('../views/machine-material/MachineMaterialView.vue'),
-        meta: { title: '上机物料' }
+        meta: { title: '上机物料', requiresAdmin: true }
       },
       {
         path: 'delivery-stats',
