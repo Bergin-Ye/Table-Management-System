@@ -186,6 +186,11 @@
               <el-input-number v-model="calcExcessAmount" :precision="2" :disabled="true" style="width: 100%" />
             </el-form-item>
           </el-col>
+          <el-col :span="8">
+            <el-form-item label="超比数量">
+              <el-input-number v-model="calcExcessQty" :precision="0" :disabled="true" style="width: 100%" />
+            </el-form-item>
+          </el-col>
         </el-row>
 
         <!-- 每日明细 -->
@@ -273,12 +278,18 @@ const agreedRatio = computed(() => {
   }
   return null
 })
-// 自动计算：含税金额合计 = 含税单价 × (送货数量 - 当月返修) / 1.13
-const calcExcessAmount = computed(() => {
+// 超比数量 = max(0, 送货数量 - 当月返修 - 约定比例数量)
+const calcExcessQty = computed(() => {
   const delivery = form.deliveryQuantity || 0
   const repair = form.monthRepair || 0
+  const agreed = parseFloat(agreedRatio || 0)
+  const val = delivery - repair - agreed
+  return val > 0 ? val : 0
+})
+// 自动计算：含税金额合计 = 含税单价 × 超比数量 / 1.13
+const calcExcessAmount = computed(() => {
   if (form.unitPriceWithTax != null) {
-    return (form.unitPriceWithTax * (delivery - repair) / 1.13).toFixed(2)
+    return (form.unitPriceWithTax * calcExcessQty.value / 1.13).toFixed(2)
   }
   return null
 })

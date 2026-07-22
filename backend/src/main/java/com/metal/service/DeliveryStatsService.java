@@ -361,10 +361,12 @@ public class DeliveryStatsService {
                             .setScale(2, RoundingMode.HALF_UP)
             );
         }
-        // 超比数量合计 = 送货数量 - 当月返修
+        // 超比数量合计 = max(0, 送货数量 - 当月返修 - 约定比例数量)
         int delivery = record.getDeliveryQuantity() != null ? record.getDeliveryQuantity() : 0;
         int repair = record.getMonthRepair() != null ? record.getMonthRepair() : 0;
-        record.setExcessQuantity(BigDecimal.valueOf(delivery - repair));
+        BigDecimal agreed = record.getAgreedRatioQuantity() != null ? record.getAgreedRatioQuantity() : BigDecimal.ZERO;
+        BigDecimal val = BigDecimal.valueOf(delivery - repair).subtract(agreed);
+        record.setExcessQuantity(val.compareTo(BigDecimal.ZERO) > 0 ? val : BigDecimal.ZERO);
         // 超比含税金额合计 = (含税单价 × 超比数量) / 1.13
         if (record.getExcessQuantity() != null && record.getUnitPriceWithTax() != null) {
             record.setExcessAmountWithTax(
