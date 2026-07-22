@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as loginApi, register as registerApi, getMe } from '../api/auth'
+import { smsLogin as smsLoginApi, register as registerApi, getMe } from '../api/auth'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
@@ -10,8 +10,8 @@ export const useAuthStore = defineStore('auth', () => {
   const role = computed(() => user.value?.role || 'user')
   const isAdmin = computed(() => role.value === 'admin')
 
-  async function login(credentials) {
-    const res = await loginApi(credentials)
+  async function smsLogin(phoneNumber, code) {
+    const res = await smsLoginApi(phoneNumber, code)
     token.value = res.data.token
     user.value = res.data.user
     localStorage.setItem('token', res.data.token)
@@ -47,7 +47,7 @@ export const useAuthStore = defineStore('auth', () => {
     isLoggedIn,
     role,
     isAdmin,
-    login,
+    smsLogin,
     register,
     fetchMe,
     logout

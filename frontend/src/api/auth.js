@@ -1,7 +1,7 @@
 import request from './request'
 
-export function login(data) {
-  return request.post('/auth/login', data)
+export function smsLogin(phoneNumber, code) {
+  return request.post('/auth/sms-login', { phoneNumber, code })
 }
 
 export function register(data) {
@@ -10,4 +10,8 @@ export function register(data) {
 
 export function getMe() {
   return request.get('/auth/me')
+}
+
+export function sendSmsCode(phoneNumber) {
+  return request.post('/sms/send-code', { phoneNumber })
 }

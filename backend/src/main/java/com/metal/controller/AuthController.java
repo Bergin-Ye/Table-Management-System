@@ -1,7 +1,6 @@
 package com.metal.controller;
 
 import com.metal.common.Result;
-import com.metal.dto.LoginDTO;
 import com.metal.dto.LoginResultDTO;
 import com.metal.interceptor.AuthInterceptor;
 import com.metal.service.AuthService;
@@ -18,19 +17,27 @@ public class AuthController {
     @Autowired
     private AuthService authService;
 
-    @PostMapping("/login")
-    public Result<LoginResultDTO> login(@RequestBody LoginDTO dto) {
-        return Result.ok(authService.login(dto));
+    @PostMapping("/sms-login")
+    public Result<LoginResultDTO> smsLogin(@RequestBody Map<String, String> body) {
+        String phone = body.get("phoneNumber");
+        String code = body.get("code");
+        if (phone == null || !phone.matches("1\\d{10}")) {
+            return Result.fail("请输入正确的手机号");
+        }
+        if (code == null || code.length() != 6) {
+            return Result.fail("请输入6位验证码");
+        }
+        return Result.ok(authService.smsLogin(phone, code));
     }
 
     @PostMapping("/register")
     public Result<?> register(@RequestBody Map<String, String> body) {
-        // 仅管理员可注册新用户
+        // 仅管理员可注册
         AuthInterceptor.UserContext ctx = AuthInterceptor.getCurrentUser();
         if (ctx == null || !"admin".equals(ctx.getRole())) {
             return Result.fail("无权限：仅管理员可注册新用户");
         }
-        authService.register(body.get("username"), body.get("password"), body.get("realName"));
+        authService.register(body.get("phoneNumber"), body.get("realName"));
         return Result.ok("注册成功");
     }
 
