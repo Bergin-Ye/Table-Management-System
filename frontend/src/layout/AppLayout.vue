@@ -59,7 +59,7 @@
           </el-menu-item>
           <el-menu-item index="/original-record">
             <el-icon><Notebook /></el-icon>
-            <template #title>原始记录</template>
+            <template #title>维修记录</template>
           </el-menu-item>
           <el-menu-item index="/machine-material" v-if="authStore.isAdmin">
             <el-icon><Setting /></el-icon>

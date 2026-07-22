@@ -107,7 +107,7 @@ public class OriginalRecordService {
     }
 
     /**
-     * 根据料号查询156项表，返回配件名称（用于原始记录自动回填）
+     * 根据料号查询156项表，返回配件名称（用于维修记录自动回填）
      */
     public java.util.Map<String, String> lookupFrom156(String materialCode) {
         if (materialCode == null || materialCode.isBlank()) {
@@ -196,13 +196,13 @@ public class OriginalRecordService {
 
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setCharacterEncoding("UTF-8");
-            String fileName = URLEncoder.encode("原始记录导出.xlsx", StandardCharsets.UTF_8);
+            String fileName = URLEncoder.encode("维修记录导出.xlsx", StandardCharsets.UTF_8);
             response.setHeader("Content-Disposition", "attachment;filename=" + fileName);
 
             OutputStream os = response.getOutputStream();
             EasyExcel.write(os, OriginalRecord.class)
                     .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
-                    .sheet("原始记录")
+                    .sheet("维修记录")
                     .doWrite(list);
             os.flush();
         } catch (IOException e) {
@@ -215,7 +215,7 @@ public class OriginalRecordService {
         try {
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setCharacterEncoding("UTF-8");
-            String fileName = URLEncoder.encode("原始记录导入模板.xlsx", StandardCharsets.UTF_8);
+            String fileName = URLEncoder.encode("维修记录导入模板.xlsx", StandardCharsets.UTF_8);
             response.setHeader("Content-Disposition", "attachment;filename=" + fileName);
 
             OriginalRecord template = new OriginalRecord();
@@ -243,7 +243,7 @@ public class OriginalRecordService {
             OutputStream os = response.getOutputStream();
             EasyExcel.write(os, OriginalRecord.class)
                     .registerWriteHandler(new LongestMatchColumnWidthStyleStrategy())
-                    .sheet("原始记录")
+                    .sheet("维修记录")
                     .doWrite(list);
             os.flush();
         } catch (IOException e) {

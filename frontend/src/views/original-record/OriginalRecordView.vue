@@ -1,6 +1,6 @@
 <template>
   <div class="page-content">
-    <PageHeader title="原始记录" />
+    <PageHeader title="维修记录" />
 
     <SearchForm :form="searchForm" @search="handleSearch" @reset="handleReset">
       <el-form-item label="关键词">
@@ -83,6 +83,7 @@
           <el-tag :type="warrantyTagType(row.isOutOfWarranty)" size="small">{{ row.isOutOfWarranty || '-' }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column prop="documentNo" label="单据号" width="110" show-overflow-tooltip />
       <el-table-column prop="createdBy" label="操作人" width="80" />
       <el-table-column label="操作" width="180" fixed="right">
         <template #default="{ row }">
@@ -97,7 +98,7 @@
       <el-pagination v-model:current-page="queryParams.page" v-model:page-size="queryParams.pageSize" :page-sizes="[20, 50, 100]" :total="total" layout="total, sizes, prev, pager, next, jumper" @size-change="handleSizeChange" @current-change="handlePageChange" />
     </div>
 
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑原始记录' : (isCopy ? '复制原始记录' : '新增原始记录')" width="900px" :close-on-click-modal="false" destroy-on-close>
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑维修记录' : (isCopy ? '复制维修记录' : '新增维修记录')" width="900px" :close-on-click-modal="false" destroy-on-close>
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-row :gutter="16">
           <el-col :span="8">
@@ -221,12 +222,17 @@
           </el-col>
         </el-row>
         <el-row :gutter="16">
-          <el-col :span="12">
+          <el-col :span="8">
             <el-form-item label="送货记录引用" prop="deliveryRecordRef">
               <el-input v-model="form.deliveryRecordRef" />
             </el-form-item>
           </el-col>
-          <el-col :span="12">
+          <el-col :span="8">
+            <el-form-item label="单据号">
+              <el-input v-model="form.documentNo" placeholder="非必填" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
             <el-form-item label="备注" prop="remark">
               <el-input v-model="form.remark" />
             </el-form-item>
@@ -304,7 +310,7 @@ const defaultForm = {
   diagnostician: '', repairPerson: '', confirmer: '', repairRequestTime: '', startTime: '',
   endTime: '', machineModel: '', faultPhenomenon: '', faultDescription: '',
   materialCode: '', partName: '', quantity: null, machineOnMaterial: '', machineOffMaterial: '',
-  remark: '', deliveryRecordRef: ''
+  remark: '', deliveryRecordRef: '', documentNo: ''
 }
 const form = reactive({ ...defaultForm })
 const rules = {
@@ -467,7 +473,7 @@ async function handleExport() {
       endDate: dateRange.value?.[1] || undefined,
       companyId: companyStore.currentCompanyId
     })
-    downloadBlob(response.data, '原始记录.xlsx')
+    downloadBlob(response.data, '维修记录.xlsx')
     ElMessage.success('导出成功')
   } catch { /* error handled */ }
 }
@@ -475,7 +481,7 @@ async function handleExport() {
 async function handleTemplateDownload() {
   try {
     const response = await api.downloadTemplate()
-    downloadBlob(response.data, '原始记录模板.xlsx')
+    downloadBlob(response.data, '维修记录模板.xlsx')
     ElMessage.success('模板下载成功')
   } catch { /* error handled */ }
 }
@@ -489,7 +495,7 @@ const fieldMap = {
   faultPhenomenon: 'faultPhenomenon', faultDescription: 'faultDescription',
   materialCode: 'materialCode', partName: 'partName', quantity: 'quantity',
   machineOnMaterial: 'machineOnMaterial', machineOffMaterial: 'machineOffMaterial',
-  remark: 'remark', deliveryRecordRef: 'deliveryRecordRef'
+  remark: 'remark', deliveryRecordRef: 'deliveryRecordRef', documentNo: 'documentNo'
 }
 
 // OCR 图片识别

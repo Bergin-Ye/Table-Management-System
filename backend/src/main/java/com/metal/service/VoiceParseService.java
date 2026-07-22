@@ -44,7 +44,7 @@ public class VoiceParseService {
             put("remark",        new String[]{"备注"});
         }}));
 
-        // --- 原始记录 ---
+        // --- 维修记录 ---
         TABLE_KEYWORDS.put("original-record", orderedMap(new LinkedHashMap<>() {{
             put("recordDate",          new String[]{"日期", "记录日期"});
             put("shift",               new String[]{"班次"});
@@ -67,6 +67,7 @@ public class VoiceParseService {
             put("machineOffMaterial",  new String[]{"下机物料号", "下机物料", "下机"});
             put("remark",              new String[]{"备注"});
             put("deliveryRecordRef",   new String[]{"送货记录引用", "送货记录"});
+            put("documentNo",         new String[]{"单据号"});
         }}));
 
         // --- 上机物料 ---

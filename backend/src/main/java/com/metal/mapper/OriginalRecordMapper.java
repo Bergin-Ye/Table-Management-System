@@ -14,13 +14,13 @@ public interface OriginalRecordMapper {
     @Insert("INSERT INTO original_record (company_id, `year_month`, record_date, shift, factory, serial_number, machine_no, " +
             "diagnostician, repair_person, repair_request_time, start_time, end_time, repair_hours, downtime_hours, " +
             "machine_model, fault_phenomenon, fault_description, material_code, part_name, quantity, " +
-            "machine_on_material, machine_off_material, remark, confirmer, delivery_record_ref, " +
+            "machine_on_material, machine_off_material, remark, confirmer, delivery_record_ref, document_no, " +
             "last_machine_on_time, is_out_of_warranty, created_by, updated_by) " +
             "VALUES (#{companyId}, #{yearMonth}, #{recordDate}, #{shift}, #{factory}, #{serialNumber}, #{machineNo}, " +
             "#{diagnostician}, #{repairPerson}, #{repairRequestTime}, #{startTime}, #{endTime}, " +
             "#{repairHours}, #{downtimeHours}, #{machineModel}, #{faultPhenomenon}, #{faultDescription}, " +
             "#{materialCode}, #{partName}, #{quantity}, #{machineOnMaterial}, #{machineOffMaterial}, " +
-            "#{remark}, #{confirmer}, #{deliveryRecordRef}, #{lastMachineOnTime}, #{isOutOfWarranty}, " +
+            "#{remark}, #{confirmer}, #{deliveryRecordRef}, #{documentNo}, #{lastMachineOnTime}, #{isOutOfWarranty}, " +
             "#{createdBy}, #{updatedBy})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insert(OriginalRecord record);
@@ -32,7 +32,7 @@ public interface OriginalRecordMapper {
             "machine_model=#{machineModel}, fault_phenomenon=#{faultPhenomenon}, fault_description=#{faultDescription}, " +
             "material_code=#{materialCode}, part_name=#{partName}, quantity=#{quantity}, " +
             "machine_on_material=#{machineOnMaterial}, machine_off_material=#{machineOffMaterial}, " +
-            "remark=#{remark}, confirmer=#{confirmer}, delivery_record_ref=#{deliveryRecordRef}, " +
+            "remark=#{remark}, confirmer=#{confirmer}, delivery_record_ref=#{deliveryRecordRef}, document_no=#{documentNo}, " +
             "last_machine_on_time=#{lastMachineOnTime}, is_out_of_warranty=#{isOutOfWarranty}, updated_by=#{updatedBy} " +
             "WHERE id=#{id}")
     int update(OriginalRecord record);
@@ -48,14 +48,14 @@ public interface OriginalRecordMapper {
             "INSERT INTO original_record (company_id, `year_month`, record_date, shift, factory, serial_number, machine_no, " +
             "diagnostician, repair_person, repair_request_time, start_time, end_time, repair_hours, downtime_hours, " +
             "machine_model, fault_phenomenon, fault_description, material_code, part_name, quantity, " +
-            "machine_on_material, machine_off_material, remark, confirmer, delivery_record_ref, " +
+            "machine_on_material, machine_off_material, remark, confirmer, delivery_record_ref, document_no, " +
             "last_machine_on_time, is_out_of_warranty, created_by, updated_by) VALUES " +
             "<foreach collection='list' item='r' separator=','>" +
             "(#{r.companyId}, #{r.yearMonth}, #{r.recordDate}, #{r.shift}, #{r.factory}, #{r.serialNumber}, #{r.machineNo}, " +
             "#{r.diagnostician}, #{r.repairPerson}, #{r.repairRequestTime}, #{r.startTime}, #{r.endTime}, " +
             "#{r.repairHours}, #{r.downtimeHours}, #{r.machineModel}, #{r.faultPhenomenon}, #{r.faultDescription}, " +
             "#{r.materialCode}, #{r.partName}, #{r.quantity}, #{r.machineOnMaterial}, #{r.machineOffMaterial}, " +
-            "#{r.remark}, #{r.confirmer}, #{r.deliveryRecordRef}, #{r.lastMachineOnTime}, #{r.isOutOfWarranty}, " +
+            "#{r.remark}, #{r.confirmer}, #{r.deliveryRecordRef}, #{r.documentNo}, #{r.lastMachineOnTime}, #{r.isOutOfWarranty}, " +
             "#{r.createdBy}, #{r.updatedBy})" +
             "</foreach>" +
             "</script>")

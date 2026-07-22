@@ -1,6 +1,6 @@
 # 金属厂数据管理系统
 
-金属加工行业的生产数据管理平台，覆盖送货记录、原始记录、上机物料、超比统计、结算机台等核心业务场景。支持多公司隔离、RBAC 权限控制、语音解析录入、OCR 图片识别、Excel 批量导入导出。
+金属加工行业的生产数据管理平台，覆盖送货记录、维修记录、上机物料、超比统计、结算机台等核心业务场景。支持多公司隔离、RBAC 权限控制、语音解析录入、OCR 图片识别、Excel 批量导入导出。
 
 ---
 
@@ -152,7 +152,7 @@ curl -X POST http://localhost:8080/api/auth/register \
 | 模块 | 路由 | 说明 |
 |------|------|------|
 | 送货记录 | `/delivery-record` | 物料送货记录的增删改查、搜索、排序、Excel 导入导出、语音解析录入 |
-| 原始记录 | `/original-record` | 维修原始记录管理，支持 OCR 图片识别、跨天工时自动计算、过保查询 |
+| 维修记录 | `/original-record` | 维修记录管理，支持 OCR 图片识别、跨天工时自动计算、过保查询、单据号 |
 | 超比统计 | `/delivery-stats` | 送货超比例统计，支持自动填充（从156项回填）、当月数据批量刷新 |
 | 结算机台数 | `/settlement-machine` | 各机型结算机台数管理，支持从156项自动回填 |
 | 机型明细 | `/machine-detail` | 厂房-机台号-机台品牌的对应关系管理 |
@@ -199,28 +199,34 @@ curl -X POST http://localhost:8080/api/auth/register \
 
 所有业务模块的新增表单都支持语音/文字解析。将口语化文本粘贴到语音输入框，点击解析即可自动填充表单字段。
 
-示例输入：
+示例输入（送货记录）：
 
 ```
 日期2026年7月21日 类别备件 物料名称丝杆 规格型号M8 物料编码ABC 数量5 品牌FANUC 厂房A
 ```
 
-系统基于关键词锚点匹配，本地解析，不依赖外部 API。
+示例输入（维修记录）：
+
+```
+日期2026年7月21日 班次白班 厂房A 机台号K25 机型FANUC 诊断人张三 维修人李四 确认人王五 报修时间22时 开始时间23时 结束时间02时 故障现象主轴异响 维修描述更换丝杆 料号2212673-0461 配件名称丝杆 数量1 上机物料号M001 下机物料号M002 单据号DOC001 备注无
+```
+
+系统基于关键词锚点匹配（日期、班次、厂房、料号、单据号 等），本地解析，不依赖外部 API。
 
 ### OCR 图片识别
 
-原始记录模块支持上传设备维修单据图片，通过通义千问 Qwen3.5-OCR 自动识别并填充字段。需要使用有效的 DashScope API Key。
+维修记录模块支持上传设备维修单据图片，通过通义千问 Qwen3.5-OCR 自动识别并填充字段。需要使用有效的 DashScope API Key。
 
 ### Excel 导入导出
 
-送货记录、原始记录、超比统计等模块均支持：
+送货记录、维修记录、超比统计等模块均支持：
 - **模板下载**：下载标准 Excel 模板
 - **批量导入**：按模板填写后一键导入
 - **数据导出**：按当前筛选条件导出 Excel
 
 ### 跨天工时计算
 
-原始记录中，当结束时间跨越午夜时，系统自动处理日期：
+维修记录中，当结束时间跨越午夜时，系统自动处理日期：
 - 输入：开始时间 `23:00`，结束时间 `02:00`
 - 自动计算：`endTime = 次日 02:00`，`repairHours = 180分钟`，`downtimeHours = 240分钟`
 
@@ -253,7 +259,7 @@ curl -X POST http://localhost:8080/api/auth/register \
 | `/api/delivery-record/import` | POST | Excel 导入 | 登录 |
 | `/api/delivery-record/export` | GET | Excel 导出 | 登录 |
 | `/api/delivery-record/template` | GET | 下载模板 | 登录 |
-| `/api/original-record` | GET/POST | 原始记录 CRUD | 登录 |
+| `/api/original-record` | GET/POST | 维修记录 CRUD | 登录 |
 | `/api/original-record/lookup-warranty` | GET | 过保查询 | 登录 |
 | `/api/original-record/lookup-156` | GET | 156项回填查询 | 登录 |
 | `/api/delivery-stats` | GET/POST | 超比统计 CRUD | 登录 |
@@ -284,7 +290,7 @@ curl -X POST http://localhost:8080/api/auth/register \
 | `sys_user` | 系统用户 |
 | `operation_log` | 操作日志 |
 | `delivery_record` | 送货记录 |
-| `original_record` | 原始记录 |
+| `original_record` | 维修记录（含单据号字段 `document_no`） |
 | `machine_material` | 上机物料 |
 | `delivery_stats` | 超比统计主表 |
 | `delivery_stats_daily` | 超比统计每日明细 |

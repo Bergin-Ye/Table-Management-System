@@ -70,9 +70,11 @@ public class OriginalRecord {
     private String confirmer;
     @ExcelProperty(value = "送货记录引用", index = 23)
     private String deliveryRecordRef;
-    @ExcelProperty(value = "上次上机时间", index = 24)
+    @ExcelProperty(value = "单据号", index = 24)
+    private String documentNo;
+    @ExcelProperty(value = "上次上机时间", index = 25)
     private LocalDate lastMachineOnTime;
-    @ExcelProperty(value = "是否过保", index = 25)
+    @ExcelProperty(value = "是否过保", index = 26)
     private String isOutOfWarranty;
     @ExcelIgnore
     private LocalDateTime createdAt;

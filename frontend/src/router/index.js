@@ -24,7 +24,7 @@ const routes = [
         path: 'original-record',
         name: 'OriginalRecord',
         component: () => import('../views/original-record/OriginalRecordView.vue'),
-        meta: { title: '原始记录' }
+        meta: { title: '维修记录' }
       },
       {
         path: 'machine-material',
