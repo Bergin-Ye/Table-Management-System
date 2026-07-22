@@ -91,12 +91,12 @@ public interface OriginalRecordMapper {
                                 @Param("sortField") String sortField,
                                 @Param("sortOrder") String sortOrder);
 
-    @Select("SELECT COUNT(*) FROM original_record WHERE material_code = #{materialCode} " +
+    @Select("SELECT COALESCE(SUM(quantity), 0) FROM original_record WHERE material_code = #{materialCode} " +
             "AND DATE_FORMAT(record_date, '%Y-%m') = #{month} AND company_id = #{companyId}")
     int countByMaterialCodeAndMonth(@Param("materialCode") String materialCode, @Param("month") String month,
                                     @Param("companyId") Long companyId);
 
-    @Select("SELECT COUNT(*) FROM original_record WHERE material_code = #{materialCode} " +
+    @Select("SELECT COALESCE(SUM(quantity), 0) FROM original_record WHERE material_code = #{materialCode} " +
             "AND DATE_FORMAT(record_date, '%Y-%m') = #{month} AND is_out_of_warranty = '未过保' AND company_id = #{companyId}")
     int countRepairByMaterialCodeAndMonth(@Param("materialCode") String materialCode, @Param("month") String month,
                                           @Param("companyId") Long companyId);

@@ -75,12 +75,12 @@ public interface DeliveryRecordMapper {
             "</script>")
     int batchInsert(@Param("list") List<DeliveryRecord> records);
 
-    @Select("SELECT COUNT(*) FROM delivery_record WHERE material_code = #{materialCode} " +
+    @Select("SELECT COALESCE(SUM(quantity), 0) FROM delivery_record WHERE material_code = #{materialCode} " +
             "AND DATE_FORMAT(record_date, '%Y-%m') = #{month} AND company_id = #{companyId}")
     int countByMaterialCodeAndMonth(@Param("materialCode") String materialCode, @Param("month") String month,
                                     @Param("companyId") Long companyId);
 
-    @Select("SELECT DAY(record_date) as day, COUNT(*) as cnt FROM delivery_record " +
+    @Select("SELECT DAY(record_date) as day, COALESCE(SUM(quantity), 0) as cnt FROM delivery_record " +
             "WHERE material_code = #{materialCode} AND DATE_FORMAT(record_date, '%Y-%m') = #{month} " +
             "AND company_id = #{companyId} " +
             "GROUP BY DAY(record_date) ORDER BY day")
