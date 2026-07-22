@@ -50,6 +50,10 @@ export function lookup156(materialCode) {
   return request.get('/original-record/lookup-156', { params: { materialCode } })
 }
 
+export function lookupDeliveryRef(machineOnMaterial, recordDate) {
+  return request.get('/original-record/lookup-delivery-ref', { params: { machineOnMaterial, recordDate } })
+}
+
 export function downloadTemplate() {
   return request.get('/original-record/template', {
     responseType: 'blob'

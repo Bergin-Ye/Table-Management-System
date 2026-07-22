@@ -55,6 +55,13 @@ public class OriginalRecordController {
         return Result.ok(service.lookupFrom156(materialCode));
     }
 
+    @GetMapping("/lookup-delivery-ref")
+    public Result<java.util.Map<String, Object>> lookupDeliveryRef(
+            @RequestParam String machineOnMaterial,
+            @RequestParam(required = false) String recordDate) {
+        return Result.ok(service.lookupDeliveryRef(machineOnMaterial, recordDate));
+    }
+
     @PostMapping
     public Result<OriginalRecord> create(@RequestBody OriginalRecord record) {
         return Result.ok(service.create(record));

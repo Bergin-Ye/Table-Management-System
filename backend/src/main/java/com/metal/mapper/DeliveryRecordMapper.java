@@ -87,4 +87,7 @@ public interface DeliveryRecordMapper {
     List<java.util.Map<String, Object>> countDailyByMaterialCodeAndMonth(
             @Param("materialCode") String materialCode, @Param("month") String month,
             @Param("companyId") Long companyId);
+
+    @Select("SELECT COUNT(*) FROM delivery_record WHERE material_serial = #{serial} AND DATE_FORMAT(record_date, '%Y-%m') = #{month}")
+    int countByMaterialSerialAndMonth(@Param("serial") String serial, @Param("month") String month);
 }

@@ -42,6 +42,9 @@ public class OriginalRecordService {
     @Autowired
     private BaseMaterial156Mapper baseMaterial156Mapper;
 
+    @Autowired
+    private com.metal.mapper.DeliveryRecordMapper deliveryRecordMapper;
+
     private static final DateTimeFormatter YM_FMT = DateTimeFormatter.ofPattern("'FY'yyMM");
 
     public PageResult<OriginalRecord> query(int page, int pageSize, Long companyId, String keyword,
@@ -118,6 +121,24 @@ public class OriginalRecordService {
             return java.util.Map.of("partName", item.getPartName() != null ? item.getPartName() : "");
         }
         return java.util.Map.of("partName", "");
+    }
+
+    /**
+     * 根据上机物料号 + 日期，查询本月送货记录中序列号匹配的记录数
+     */
+    public java.util.Map<String, Object> lookupDeliveryRef(String machineOnMaterial, String recordDate) {
+        java.util.Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("count", 0);
+        if (machineOnMaterial == null || machineOnMaterial.isBlank() || recordDate == null || recordDate.isBlank()) {
+            return result;
+        }
+        try {
+            java.time.LocalDate date = java.time.LocalDate.parse(recordDate);
+            String month = date.format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+            int count = deliveryRecordMapper.countByMaterialSerialAndMonth(machineOnMaterial, month);
+            result.put("count", count);
+        } catch (Exception ignored) {}
+        return result;
     }
 
     // =============== Excel 导入 ===============
