@@ -44,8 +44,8 @@ public class MachineCountService {
         return new PageResult<>(pageInfo.getTotal(), page, pageSize, list);
     }
 
-    public List<MachineCount> findByMonth(String statMonth) {
-        return mapper.findByMonth(statMonth);
+    public List<MachineCount> findByMonth(String statMonth, Long companyId) {
+        return mapper.findByMonth(statMonth, companyId);
     }
 
     @Transactional
@@ -105,7 +105,7 @@ public class MachineCountService {
 
         // 检查是否删除的是基准线
         if (isBaseline(exist)) {
-            List<MachineCount> others = mapper.findByMonth(statMonth);
+            List<MachineCount> others = mapper.findByMonth(statMonth, null);
             // 排除自身
             others.removeIf(r -> r.getId().equals(id));
             if (!others.isEmpty()) {
@@ -116,7 +116,7 @@ public class MachineCountService {
         mapper.deleteById(id);
 
         // 删除后如果还有其他记录但没有基准线，选数量最大的作为新基准线
-        List<MachineCount> remaining = mapper.findByMonth(statMonth);
+        List<MachineCount> remaining = mapper.findByMonth(statMonth, null);
         if (!remaining.isEmpty()) {
             boolean hasBaseline = remaining.stream().anyMatch(this::isBaseline);
             if (!hasBaseline) {
@@ -200,7 +200,7 @@ public class MachineCountService {
         MachineCount baseline = mapper.findBaselineByMonth(statMonth);
         if (baseline == null) return;
 
-        List<MachineCount> all = mapper.findByMonth(statMonth);
+        List<MachineCount> all = mapper.findByMonth(statMonth, null);
         List<MachineCount> toUpdate = new ArrayList<>();
 
         for (MachineCount r : all) {

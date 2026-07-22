@@ -42,8 +42,8 @@ export function clearByMonth(statMonth) {
   return request.post('/machine-count/clear-by-month', null, { params: { statMonth } })
 }
 
-export function getByMonth(statMonth) {
-  return request.get('/machine-count/by-month', { params: { statMonth } })
+export function getByMonth(statMonth, companyId) {
+  return request.get('/machine-count/by-month', { params: { statMonth, companyId } })
 }
 
 export function downloadTemplate() {

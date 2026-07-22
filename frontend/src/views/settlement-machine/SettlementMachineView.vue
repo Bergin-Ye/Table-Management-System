@@ -337,7 +337,7 @@ async function openMachineCountDialog() {
     return
   }
   try {
-    const res = await getMachineCountByMonth(form.statMonth)
+    const res = await getMachineCountByMonth(form.statMonth, companyStore.currentCompanyId)
     machineCountList.value = res.data || []
     machineCountDialogVisible.value = true
   } catch { ElMessage.error('查询开机数量失败') }

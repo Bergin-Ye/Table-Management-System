@@ -55,8 +55,12 @@ public interface MachineCountMapper {
     MachineCount findBaselineByMonth(@Param("statMonth") String statMonth);
 
     /** 查找当月所有记录（按数量降序，用于重算） */
-    @Select("SELECT * FROM machine_count WHERE stat_month = #{statMonth} ORDER BY count DESC")
-    List<MachineCount> findByMonth(@Param("statMonth") String statMonth);
+    @Select("<script>" +
+            "SELECT * FROM machine_count WHERE stat_month = #{statMonth} " +
+            "<if test='companyId != null'>AND company_id = #{companyId}</if> " +
+            "ORDER BY count DESC" +
+            "</script>")
+    List<MachineCount> findByMonth(@Param("statMonth") String statMonth, @Param("companyId") Long companyId);
 
     /** 按月份删除非基准数据 */
     @org.apache.ibatis.annotations.Update("DELETE FROM machine_count WHERE stat_month = #{statMonth} AND ratio_pct != 100.00")

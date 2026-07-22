@@ -73,8 +73,9 @@ public class MachineCountController {
     }
 
     @GetMapping("/by-month")
-    public Result<java.util.List<MachineCount>> byMonth(@RequestParam String statMonth) {
-        return Result.ok(service.findByMonth(statMonth));
+    public Result<java.util.List<MachineCount>> byMonth(@RequestParam String statMonth,
+                                                         @RequestParam(required = false) Long companyId) {
+        return Result.ok(service.findByMonth(statMonth, companyId));
     }
 
     @PostMapping("/clear-by-month")
