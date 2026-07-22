@@ -53,7 +53,8 @@ public interface DeliveryStatsMapper {
             "<if test='companyId != null'>AND company_id = #{companyId}</if> " +
             "<if test='keyword != null and keyword != \"\"'>" +
             "AND (material_code LIKE CONCAT('%',#{keyword},'%') OR system_name LIKE CONCAT('%',#{keyword},'%') " +
-            "OR part_name LIKE CONCAT('%',#{keyword},'%') OR category LIKE CONCAT('%',#{keyword},'%')) " +
+            "OR part_name LIKE CONCAT('%',#{keyword},'%') OR category LIKE CONCAT('%',#{keyword},'%') " +
+            "OR year_month LIKE CONCAT('%',#{keyword},'%')) " +
             "</if>" +
             "<if test='category != null and category != \"\"'>AND category = #{category}</if> " +
             "<if test='yearMonth != null and yearMonth != \"\"'>AND `year_month` = #{yearMonth}</if> " +

@@ -73,7 +73,11 @@ public interface OriginalRecordMapper {
             "<if test='keyword != null and keyword != \"\"'>" +
             "AND (serial_number LIKE CONCAT('%',#{keyword},'%') OR machine_no LIKE CONCAT('%',#{keyword},'%') " +
             "OR material_code LIKE CONCAT('%',#{keyword},'%') OR machine_model LIKE CONCAT('%',#{keyword},'%') " +
-            "OR diagnostician LIKE CONCAT('%',#{keyword},'%') OR repair_person LIKE CONCAT('%',#{keyword},'%')) " +
+            "OR diagnostician LIKE CONCAT('%',#{keyword},'%') OR repair_person LIKE CONCAT('%',#{keyword},'%') " +
+            "OR confirmer LIKE CONCAT('%',#{keyword},'%') OR factory LIKE CONCAT('%',#{keyword},'%') " +
+            "OR fault_phenomenon LIKE CONCAT('%',#{keyword},'%') OR fault_description LIKE CONCAT('%',#{keyword},'%') " +
+            "OR part_name LIKE CONCAT('%',#{keyword},'%') OR remark LIKE CONCAT('%',#{keyword},'%') " +
+            "OR document_no LIKE CONCAT('%',#{keyword},'%')) " +
             "</if>" +
             "<if test='shift != null and shift != \"\"'>AND shift = #{shift}</if> " +
             "<if test='factory != null and factory != \"\"'>AND factory = #{factory}</if> " +
