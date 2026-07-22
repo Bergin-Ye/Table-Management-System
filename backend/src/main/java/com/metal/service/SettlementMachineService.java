@@ -21,6 +21,8 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -58,6 +60,10 @@ public class SettlementMachineService {
         if (record.getWarrantyPeriod() == null || record.getWarrantyPeriod().isBlank()) {
             record.setWarrantyPeriod("6个月");
         }
+        // 比例从百分比转为小数（如 25 → 0.25），与 Excel 导入逻辑一致
+        if (record.getRatio() != null && record.getRatio().compareTo(BigDecimal.ONE) > 0) {
+            record.setRatio(record.getRatio().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+        }
         String user = ServiceHelper.getCurrentUserName();
         record.setCreatedBy(user);
         record.setUpdatedBy(user);
@@ -69,6 +75,10 @@ public class SettlementMachineService {
     public SettlementMachine update(SettlementMachine record) {
         SettlementMachine exist = getById(record.getId());
         ServiceHelper.checkOwnershipOrAdmin(exist.getCreatedBy(), "编辑");
+        // 比例从百分比转为小数
+        if (record.getRatio() != null && record.getRatio().compareTo(BigDecimal.ONE) > 0) {
+            record.setRatio(record.getRatio().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+        }
         record.setUpdatedBy(ServiceHelper.getCurrentUserName());
         mapper.update(record);
         return record;

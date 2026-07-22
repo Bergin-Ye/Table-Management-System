@@ -262,6 +262,10 @@ public class DeliveryStatsService {
     }
 
     private void applyCalculations(DeliveryStats record) {
+        // 比例从百分比转为小数（如 15 → 0.15），与 Excel 导入逻辑一致
+        if (record.getRatio() != null && record.getRatio().compareTo(BigDecimal.ONE) > 0) {
+            record.setRatio(record.getRatio().divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
+        }
         // 约定比例数量 = 机台数 × 单台机用量 × 比例
         if (record.getMachineCount() != null && record.getUnitUsage() != null && record.getRatio() != null) {
             record.setAgreedRatioQuantity(
