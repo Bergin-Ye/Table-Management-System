@@ -12,7 +12,7 @@ USE metal_system;
 -- 系统表
 -- ============================================
 
--- 公司表（多租户预留）
+-- 公司表
 CREATE TABLE IF NOT EXISTS `company` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
     `name` VARCHAR(200) NOT NULL COMMENT '公司名称',
@@ -30,6 +30,15 @@ CREATE TABLE IF NOT EXISTS `sys_user` (
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- 系统配置表
+CREATE TABLE IF NOT EXISTS `sys_config` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `config_key` VARCHAR(100) NOT NULL UNIQUE,
+    `config_value` VARCHAR(500) NOT NULL,
+    `description` VARCHAR(200),
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 操作日志
 CREATE TABLE IF NOT EXISTS `operation_log` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -40,19 +49,56 @@ CREATE TABLE IF NOT EXISTS `operation_log` (
     `record_id` BIGINT,
     `detail` TEXT,
     `ip` VARCHAR(50),
-    `company_id` BIGINT COMMENT '公司ID（多租户预留）',
+    `company_id` BIGINT COMMENT '公司ID',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     INDEX `idx_ol_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 用户在线状态表
+CREATE TABLE IF NOT EXISTS `user_online` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `user_id` BIGINT NOT NULL,
+    `username` VARCHAR(100) NOT NULL,
+    `last_active_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- OCR 调用日志表
+CREATE TABLE IF NOT EXISTS `ocr_call_log` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `table_type` VARCHAR(50) NOT NULL COMMENT 'original-record / delivery-record',
+    `user_id` BIGINT DEFAULT NULL,
+    `username` VARCHAR(100) DEFAULT NULL,
+    `image_size` BIGINT DEFAULT NULL,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
 -- 业务表
 -- ============================================
 
+-- 156项基础物料表
+CREATE TABLE IF NOT EXISTS `base_material_156` (
+    `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
+    `company_id` BIGINT DEFAULT NULL,
+    `category` VARCHAR(100) DEFAULT NULL COMMENT '类别',
+    `material_code` VARCHAR(100) NOT NULL COMMENT '料号',
+    `system_name` VARCHAR(200) DEFAULT NULL COMMENT '系统名称',
+    `part_name` VARCHAR(200) DEFAULT NULL COMMENT '配件名称',
+    `unit_usage` DECIMAL(10,4) DEFAULT NULL COMMENT '单台机用量',
+    `ratio` DECIMAL(10,4) DEFAULT NULL COMMENT '比例（0~1小数）',
+    `unit_price_with_tax` DECIMAL(12,4) DEFAULT NULL COMMENT '含税单价',
+    `created_by` VARCHAR(50) DEFAULT NULL,
+    `updated_by` VARCHAR(50) DEFAULT NULL,
+    `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY `idx_b156_mcode_company` (`material_code`, `company_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- 送货记录
 CREATE TABLE IF NOT EXISTS `delivery_record` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `company_id` BIGINT COMMENT '公司ID（多租户预留）',
+    `company_id` BIGINT DEFAULT '1',
     `record_date` DATE,
     `category` VARCHAR(100),
     `material_name` VARCHAR(200),
@@ -66,7 +112,7 @@ CREATE TABLE IF NOT EXISTS `delivery_record` (
     `factory` VARCHAR(100),
     `shipment_no` VARCHAR(100),
     `remark` TEXT COMMENT '备注',
-    `year_month` VARCHAR(20) COMMENT '年+月（格式: FYyyMM，如 FY2607）',
+    `year_month` VARCHAR(20) COMMENT '年+月（格式: FYyyMM）',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `created_by` VARCHAR(50),
@@ -80,7 +126,7 @@ CREATE TABLE IF NOT EXISTS `delivery_record` (
 -- 物料表
 CREATE TABLE IF NOT EXISTS `material` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `company_id` BIGINT COMMENT '公司ID（多租户预留）',
+    `company_id` BIGINT DEFAULT '1',
     `category` VARCHAR(100),
     `material_name` VARCHAR(200),
     `spec_model` VARCHAR(300),
@@ -90,10 +136,10 @@ CREATE TABLE IF NOT EXISTS `material` (
     INDEX `idx_m_mcode` (`material_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 金属厂原始记录
+-- 维修记录（原金属厂原始记录）
 CREATE TABLE IF NOT EXISTS `original_record` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `company_id` BIGINT COMMENT '公司ID（多租户预留）',
+    `company_id` BIGINT DEFAULT '1',
     `year_month` VARCHAR(20),
     `record_date` DATE,
     `shift` VARCHAR(10) COMMENT '白班/夜班',
@@ -105,8 +151,8 @@ CREATE TABLE IF NOT EXISTS `original_record` (
     `repair_request_time` DATETIME,
     `start_time` DATETIME,
     `end_time` DATETIME,
-    `repair_hours` DECIMAL(10,2) COMMENT '自动计算',
-    `downtime_hours` DECIMAL(10,2) COMMENT '自动计算',
+    `repair_hours` DECIMAL(10,2) COMMENT '维修工时(分钟)',
+    `downtime_hours` DECIMAL(10,2) COMMENT '停机工时(分钟)',
     `machine_model` VARCHAR(100),
     `fault_phenomenon` VARCHAR(500),
     `fault_description` TEXT,
@@ -118,7 +164,8 @@ CREATE TABLE IF NOT EXISTS `original_record` (
     `remark` TEXT,
     `confirmer` VARCHAR(50),
     `delivery_record_ref` VARCHAR(200),
-    `last_machine_on_time` DATE COMMENT '自动查询',
+    `document_no` VARCHAR(100) DEFAULT NULL COMMENT '单据号',
+    `last_machine_on_time` DATE COMMENT '上次上机时间',
     `is_out_of_warranty` VARCHAR(10) COMMENT '未过保/已过保/无',
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -131,10 +178,10 @@ CREATE TABLE IF NOT EXISTS `original_record` (
     INDEX `idx_or_off` (`machine_off_material`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 金属厂上机物料
+-- 上机物料
 CREATE TABLE IF NOT EXISTS `machine_material` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `company_id` BIGINT COMMENT '公司ID（多租户预留）',
+    `company_id` BIGINT DEFAULT '1',
     `year_month` VARCHAR(20),
     `record_date` DATE,
     `shift` VARCHAR(10),
@@ -173,13 +220,13 @@ CREATE TABLE IF NOT EXISTS `machine_material` (
 -- 送货超比统计主表
 CREATE TABLE IF NOT EXISTS `delivery_stats` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `company_id` BIGINT COMMENT '公司ID（多租户预留）',
+    `company_id` BIGINT DEFAULT '1',
     `category` VARCHAR(100),
     `material_code` VARCHAR(100),
     `system_name` VARCHAR(200),
     `part_name` VARCHAR(200),
     `unit_usage` DECIMAL(10,4) COMMENT '单台机用量',
-    `ratio` DECIMAL(10,4) COMMENT '比例',
+    `ratio` DECIMAL(10,4) COMMENT '比例（0~1小数）',
     `unit_price_with_tax` DECIMAL(12,4) COMMENT '含税单价',
     `machine_count` INT COMMENT '机台数',
     `delivery_quantity` INT COMMENT '送货数量',
@@ -187,7 +234,7 @@ CREATE TABLE IF NOT EXISTS `delivery_stats` (
     `month_repair` INT COMMENT '当月返修',
     `agreed_ratio_quantity` DECIMAL(12,4) COMMENT '约定比例数量',
     `excess_quantity` DECIMAL(12,4) COMMENT '超比数量合计',
-    `excess_amount_with_tax` DECIMAL(14,4) COMMENT '超比含税金额合计',
+    `excess_amount_with_tax` DECIMAL(14,2) COMMENT '超比含税金额合计',
     `stat_date` DATE,
     `year_month` VARCHAR(20),
     `created_by` VARCHAR(50),
@@ -208,21 +255,22 @@ CREATE TABLE IF NOT EXISTS `delivery_stats_daily` (
     FOREIGN KEY (`stat_id`) REFERENCES `delivery_stats`(`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 金属厂各机型结算机台数
+-- 结算机台数
 CREATE TABLE IF NOT EXISTS `settlement_machine` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `company_id` BIGINT COMMENT '公司ID（多租户预留）',
+    `company_id` BIGINT DEFAULT '1',
     `material_code` VARCHAR(100),
     `category` VARCHAR(100),
     `part_name` VARCHAR(200),
     `unit_usage` DECIMAL(10,4),
-    `ratio` DECIMAL(10,4),
-    `unit_price_with_tax` DECIMAL(12,4) COMMENT '价格(含税)',
+    `ratio` DECIMAL(10,4) COMMENT '比例（0~1小数）',
+    `unit_price_with_tax` DECIMAL(12,4) COMMENT '含税单价',
     `warranty_period` VARCHAR(50),
     `price_type` VARCHAR(50),
     `remark` TEXT,
     `machine_model` VARCHAR(100),
     `settlement_machine_count` INT,
+    `stat_month` VARCHAR(7) DEFAULT NULL COMMENT '统计月份(格式yyyy-MM)',
     `created_by` VARCHAR(50),
     `updated_by` VARCHAR(50),
     `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -234,7 +282,7 @@ CREATE TABLE IF NOT EXISTS `settlement_machine` (
 -- 机型明细
 CREATE TABLE IF NOT EXISTS `machine_detail` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `company_id` BIGINT COMMENT '公司ID（多租户预留）',
+    `company_id` BIGINT DEFAULT '1',
     `factory` VARCHAR(100),
     `machine_no` VARCHAR(100),
     `machine_brand` VARCHAR(100),
@@ -242,10 +290,10 @@ CREATE TABLE IF NOT EXISTS `machine_detail` (
     `updated_by` VARCHAR(50)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 开机数量表
+-- 开机数量
 CREATE TABLE IF NOT EXISTS `machine_count` (
     `id` BIGINT AUTO_INCREMENT PRIMARY KEY,
-    `company_id` BIGINT COMMENT '公司ID（多租户预留）',
+    `company_id` BIGINT DEFAULT '1',
     `machine_model` VARCHAR(100),
     `count` INT,
     `ratio_pct` DECIMAL(6,2),
@@ -256,7 +304,8 @@ CREATE TABLE IF NOT EXISTS `machine_count` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ============================================
--- 初始用户数据
--- 密码: admin123 (BCrypt encoded)
--- 首次启动时通过 /api/auth/register 接口正确注册
+-- 初始数据
 -- ============================================
+
+INSERT IGNORE INTO `sys_config` (`config_key`, `config_value`, `description`) VALUES
+    ('scheduler.cron', '0 0 3 * * *', '超比统计定时任务cron表达式');
