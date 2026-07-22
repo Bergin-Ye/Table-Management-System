@@ -133,11 +133,6 @@ public class DeliveryRecordService {
                 public void invoke(DeliveryRecord data, AnalysisContext ctx) {
                     counts[0]++;
                     try {
-                        if (data.getMaterialCode() == null || data.getMaterialCode().isBlank()) {
-                            failDetails.add(new ImportResultDTO.FailDetail(counts[0], "物料编码不能为空"));
-                            counts[2]++;
-                            return;
-                        }
                         applyYearMonth(data);
                         String user = ServiceHelper.getCurrentUserName();
                         // 使用导入时指定的公司ID，未传时默认归属金属厂

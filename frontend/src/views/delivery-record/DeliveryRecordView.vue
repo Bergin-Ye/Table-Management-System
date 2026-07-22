@@ -209,7 +209,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import * as deliveryApi from '../../api/delivery-record'
 import { search as searchMaterialsApi } from '../../api/material'
 import { parseVoiceText } from '../../api/voice-parse'
@@ -391,7 +391,18 @@ function handleImport() {
     try {
       const res = await deliveryApi.importExcel(file, companyStore.currentCompanyId)
       const d = res.data
-      ElMessage.success(`导入完成：成功 ${d.success} 条，失败 ${d.fail} 条`)
+      const failDetails = d.failDetails || []
+      if (d.fail > 0 && failDetails.length > 0) {
+        const reasons = failDetails.slice(0, 10).map(f => `第${f.row}行: ${f.reason}`).join('<br>')
+        const more = failDetails.length > 10 ? `<br>... 还有 ${failDetails.length - 10} 条` : ''
+        ElMessage.warning({ message: `导入完成：成功 ${d.success} 条，失败 ${d.fail} 条`, duration: 5000 })
+        setTimeout(() => {
+          ElMessageBox.alert(`<div style="max-height:300px;overflow-y:auto;font-size:13px">${reasons}${more}</div>`,
+            `失败明细 (${failDetails.length}条)`, { dangerouslyUseHTMLString: true, confirmButtonText: '知道了' })
+        }, 300)
+      } else {
+        ElMessage.success(`导入完成：成功 ${d.success} 条`)
+      }
       doFetch()
     } catch {
       // error handled in interceptor
