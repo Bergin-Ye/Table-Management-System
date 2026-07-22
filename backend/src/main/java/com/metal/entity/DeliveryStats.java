@@ -77,4 +77,37 @@ public class DeliveryStats {
     /** 更新人（导入导出时忽略） */
     @ExcelIgnore
     private String updatedBy;
+
+    // ====== 每日送货明细（仅 Excel 导出/导入用，不持久化） ======
+    @ExcelProperty(value = "1号", index = 16) private transient BigDecimal day01;
+    @ExcelProperty(value = "2号", index = 17) private transient BigDecimal day02;
+    @ExcelProperty(value = "3号", index = 18) private transient BigDecimal day03;
+    @ExcelProperty(value = "4号", index = 19) private transient BigDecimal day04;
+    @ExcelProperty(value = "5号", index = 20) private transient BigDecimal day05;
+    @ExcelProperty(value = "6号", index = 21) private transient BigDecimal day06;
+    @ExcelProperty(value = "7号", index = 22) private transient BigDecimal day07;
+    @ExcelProperty(value = "8号", index = 23) private transient BigDecimal day08;
+    @ExcelProperty(value = "9号", index = 24) private transient BigDecimal day09;
+    @ExcelProperty(value = "10号", index = 25) private transient BigDecimal day10;
+    @ExcelProperty(value = "11号", index = 26) private transient BigDecimal day11;
+    @ExcelProperty(value = "12号", index = 27) private transient BigDecimal day12;
+    @ExcelProperty(value = "13号", index = 28) private transient BigDecimal day13;
+    @ExcelProperty(value = "14号", index = 29) private transient BigDecimal day14;
+    @ExcelProperty(value = "15号", index = 30) private transient BigDecimal day15;
+    @ExcelProperty(value = "16号", index = 31) private transient BigDecimal day16;
+    @ExcelProperty(value = "17号", index = 32) private transient BigDecimal day17;
+    @ExcelProperty(value = "18号", index = 33) private transient BigDecimal day18;
+    @ExcelProperty(value = "19号", index = 34) private transient BigDecimal day19;
+    @ExcelProperty(value = "20号", index = 35) private transient BigDecimal day20;
+    @ExcelProperty(value = "21号", index = 36) private transient BigDecimal day21;
+    @ExcelProperty(value = "22号", index = 37) private transient BigDecimal day22;
+    @ExcelProperty(value = "23号", index = 38) private transient BigDecimal day23;
+    @ExcelProperty(value = "24号", index = 39) private transient BigDecimal day24;
+    @ExcelProperty(value = "25号", index = 40) private transient BigDecimal day25;
+    @ExcelProperty(value = "26号", index = 41) private transient BigDecimal day26;
+    @ExcelProperty(value = "27号", index = 42) private transient BigDecimal day27;
+    @ExcelProperty(value = "28号", index = 43) private transient BigDecimal day28;
+    @ExcelProperty(value = "29号", index = 44) private transient BigDecimal day29;
+    @ExcelProperty(value = "30号", index = 45) private transient BigDecimal day30;
+    @ExcelProperty(value = "31号", index = 46) private transient BigDecimal day31;
 }

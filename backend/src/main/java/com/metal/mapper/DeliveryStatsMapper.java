@@ -73,4 +73,10 @@ public interface DeliveryStatsMapper {
 
     @Select("SELECT COUNT(*) FROM delivery_stats WHERE material_code = #{materialCode} AND `year_month` = #{yearMonth}")
     int countByMaterialCodeAndYearMonth(@Param("materialCode") String materialCode, @Param("yearMonth") String yearMonth);
+
+    @Select("SELECT MAX(id) FROM delivery_stats")
+    Long findMaxId();
+
+    @Select("SELECT * FROM delivery_stats WHERE id > #{id} ORDER BY id")
+    List<DeliveryStats> findByIdGreaterThan(@Param("id") Long id);
 }

@@ -138,12 +138,13 @@ public class DeliveryStatsService {
     private static final int IMPORT_BATCH_SIZE = 500;
 
     /**
-     * 批量导入 Excel 数据
+     * 批量导入 Excel 数据（含每日明细）
      */
     @Transactional
     public ImportResultDTO importExcel(MultipartFile file, Long companyId) {
         List<ImportResultDTO.FailDetail> failDetails = new ArrayList<>();
         List<DeliveryStats> batch = new ArrayList<>(IMPORT_BATCH_SIZE);
+        List<java.util.Map<Integer, BigDecimal>> dailyBatch = new ArrayList<>(IMPORT_BATCH_SIZE);
         int[] counts = {0, 0, 0}; // total, success, fail
 
         try (InputStream is = file.getInputStream()) {
@@ -152,22 +153,24 @@ public class DeliveryStatsService {
                 public void invoke(DeliveryStats data, AnalysisContext ctx) {
                     counts[0]++;
                     try {
-                        // 导入时不自动重算，保留Excel原始数据
                         String user = ServiceHelper.getCurrentUserName();
                         data.setCompanyId(companyId != null ? companyId : 1L);
                         data.setCreatedBy(user);
                         data.setUpdatedBy(user);
-                        // Handle percentage: if ratio is 0~1 range keep as-is, if > 1 divide by 100
+                        // Handle percentage
                         if (data.getRatio() != null) {
                             BigDecimal r = data.getRatio();
                             if (r.compareTo(BigDecimal.ONE) > 0) {
                                 data.setRatio(r.divide(BigDecimal.valueOf(100), 4, RoundingMode.HALF_UP));
                             }
                         }
+                        // 提取每日明细
+                        java.util.Map<Integer, BigDecimal> dailies = getDayValues(data);
                         batch.add(data);
+                        dailyBatch.add(dailies);
 
                         if (batch.size() >= IMPORT_BATCH_SIZE) {
-                            flushBatch(batch, counts);
+                            flushBatchWithDailies(batch, dailyBatch, counts);
                         }
                     } catch (Exception e) {
                         failDetails.add(new ImportResultDTO.FailDetail(counts[0], e.getMessage()));
@@ -177,7 +180,7 @@ public class DeliveryStatsService {
                 @Override
                 public void doAfterAllAnalysed(AnalysisContext ctx) {
                     if (!batch.isEmpty()) {
-                        flushBatch(batch, counts);
+                        flushBatchWithDailies(batch, dailyBatch, counts);
                     }
                 }
             }).sheet().doRead();
@@ -193,11 +196,48 @@ public class DeliveryStatsService {
         return result;
     }
 
-    /** 将缓冲区数据批量写入数据库 */
-    private void flushBatch(List<DeliveryStats> batch, int[] counts) {
+    /** 批量写入并处理每日明细 */
+    private void flushBatchWithDailies(List<DeliveryStats> batch,
+                                        List<java.util.Map<Integer, BigDecimal>> dailyBatch,
+                                        int[] counts) {
+        // 记录插入前的最大ID，用于反查刚插入的记录
+        Long maxIdBefore = mapper.findMaxId();
         mapper.batchInsert(batch);
         counts[1] += batch.size();
+
+        // 反查刚插入的记录并插入每日明细
+        List<DeliveryStats> inserted = mapper.findByIdGreaterThan(maxIdBefore != null ? maxIdBefore : 0L);
+        for (int i = 0; i < batch.size() && i < dailyBatch.size(); i++) {
+            java.util.Map<Integer, BigDecimal> dailies = dailyBatch.get(i);
+            if (dailies != null && !dailies.isEmpty()) {
+                // 匹配：刚插入的记录按ID排，第 i 条 batch 对应 inserted 中某个位置的记录
+                DeliveryStats matched = findMatch(batch.get(i), inserted);
+                if (matched != null && matched.getId() != null) {
+                    List<DeliveryStatsDaily> list = new ArrayList<>();
+                    for (var entry : dailies.entrySet()) {
+                        DeliveryStatsDaily d = new DeliveryStatsDaily();
+                        d.setStatId(matched.getId());
+                        d.setDayNumber(entry.getKey());
+                        d.setValue(entry.getValue());
+                        list.add(d);
+                    }
+                    if (!list.isEmpty()) dailyMapper.batchInsert(list);
+                }
+            }
+        }
         batch.clear();
+        dailyBatch.clear();
+    }
+
+    /** 根据 materialCode + yearMonth 匹配刚插入的记录 */
+    private DeliveryStats findMatch(DeliveryStats target, List<DeliveryStats> candidates) {
+        for (DeliveryStats c : candidates) {
+            if (java.util.Objects.equals(c.getMaterialCode(), target.getMaterialCode())
+                    && java.util.Objects.equals(c.getYearMonth(), target.getYearMonth())) {
+                return c;
+            }
+        }
+        return null;
     }
 
     // =============== Excel 导出 ===============
@@ -206,6 +246,14 @@ public class DeliveryStatsService {
         try {
             PageHelper.startPage(1, 0); // 0 disables paging
             List<DeliveryStats> list = mapper.search(companyId, keyword, category, yearMonth, "id", "desc");
+
+            // 批量查询每日明细并填充到实体 transient 字段
+            for (DeliveryStats s : list) {
+                List<DeliveryStatsDaily> dailies = dailyMapper.findByStatId(s.getId());
+                for (DeliveryStatsDaily d : dailies) {
+                    setDayValue(s, d.getDayNumber(), d.getValue());
+                }
+            }
 
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setCharacterEncoding("UTF-8");
@@ -221,6 +269,44 @@ public class DeliveryStatsService {
         } catch (IOException e) {
             throw new BizException("导出失败: " + e.getMessage());
         }
+    }
+
+    /** 设置每日明细到 DeliveryStats 的 transient 字段 */
+    private void setDayValue(DeliveryStats s, int day, BigDecimal value) {
+        if (value == null) return;
+        switch (day) {
+            case 1: s.setDay01(value); break; case 2: s.setDay02(value); break;
+            case 3: s.setDay03(value); break; case 4: s.setDay04(value); break;
+            case 5: s.setDay05(value); break; case 6: s.setDay06(value); break;
+            case 7: s.setDay07(value); break; case 8: s.setDay08(value); break;
+            case 9: s.setDay09(value); break; case 10: s.setDay10(value); break;
+            case 11: s.setDay11(value); break; case 12: s.setDay12(value); break;
+            case 13: s.setDay13(value); break; case 14: s.setDay14(value); break;
+            case 15: s.setDay15(value); break; case 16: s.setDay16(value); break;
+            case 17: s.setDay17(value); break; case 18: s.setDay18(value); break;
+            case 19: s.setDay19(value); break; case 20: s.setDay20(value); break;
+            case 21: s.setDay21(value); break; case 22: s.setDay22(value); break;
+            case 23: s.setDay23(value); break; case 24: s.setDay24(value); break;
+            case 25: s.setDay25(value); break; case 26: s.setDay26(value); break;
+            case 27: s.setDay27(value); break; case 28: s.setDay28(value); break;
+            case 29: s.setDay29(value); break; case 30: s.setDay30(value); break;
+            case 31: s.setDay31(value); break;
+        }
+    }
+
+    /** 从 transient 字段读取每日明细 */
+    private java.util.Map<Integer, BigDecimal> getDayValues(DeliveryStats s) {
+        java.util.Map<Integer, BigDecimal> map = new java.util.LinkedHashMap<>();
+        BigDecimal[] days = {s.getDay01(), s.getDay02(), s.getDay03(), s.getDay04(), s.getDay05(),
+            s.getDay06(), s.getDay07(), s.getDay08(), s.getDay09(), s.getDay10(),
+            s.getDay11(), s.getDay12(), s.getDay13(), s.getDay14(), s.getDay15(),
+            s.getDay16(), s.getDay17(), s.getDay18(), s.getDay19(), s.getDay20(),
+            s.getDay21(), s.getDay22(), s.getDay23(), s.getDay24(), s.getDay25(),
+            s.getDay26(), s.getDay27(), s.getDay28(), s.getDay29(), s.getDay30(), s.getDay31()};
+        for (int i = 0; i < days.length; i++) {
+            if (days[i] != null) map.put(i + 1, days[i]);
+        }
+        return map;
     }
 
     // =============== 模板下载 ===============
@@ -272,7 +358,7 @@ public class DeliveryStatsService {
                     record.getUnitUsage()
                             .multiply(record.getRatio())
                             .multiply(BigDecimal.valueOf(record.getMachineCount()))
-                            .setScale(4, RoundingMode.HALF_UP)
+                            .setScale(2, RoundingMode.HALF_UP)
             );
         }
         // 超比数量合计 = 送货数量 - 当月返修
@@ -284,7 +370,7 @@ public class DeliveryStatsService {
             record.setExcessAmountWithTax(
                     record.getUnitPriceWithTax()
                             .multiply(record.getExcessQuantity())
-                            .divide(BigDecimal.valueOf(1.13), 4, RoundingMode.HALF_UP)
+                            .divide(BigDecimal.valueOf(1.13), 2, RoundingMode.HALF_UP)
             );
         }
     }

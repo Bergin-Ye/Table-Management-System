@@ -175,6 +175,19 @@
           </el-col>
         </el-row>
 
+        <el-row :gutter="20">
+          <el-col :span="8">
+            <el-form-item label="约定比例数量">
+              <el-input-number v-model="agreedRatio" :precision="2" :disabled="true" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+          <el-col :span="8">
+            <el-form-item label="含税金额合计(元)">
+              <el-input-number v-model="calcExcessAmount" :precision="2" :disabled="true" style="width: 100%" />
+            </el-form-item>
+          </el-col>
+        </el-row>
+
         <!-- 每日明细 -->
         <el-divider content-position="left">每日明细</el-divider>
         <el-table :data="dailies" border size="small" max-height="400">
@@ -203,7 +216,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '../../api/delivery-stats'
 import { parseVoiceText } from '../../api/voice-parse'
@@ -252,6 +265,23 @@ const defaultForm = {
 }
 const form = reactive({ ...defaultForm })
 const dailies = ref([])
+
+// 自动计算：约定比例数量 = 单台机用量 × (比例/100) × 机台数
+const agreedRatio = computed(() => {
+  if (form.unitUsage != null && form.ratio != null && form.machineCount != null) {
+    return (form.unitUsage * (form.ratio / 100) * form.machineCount).toFixed(2)
+  }
+  return null
+})
+// 自动计算：含税金额合计 = 含税单价 × (送货数量 - 当月返修) / 1.13
+const calcExcessAmount = computed(() => {
+  const delivery = form.deliveryQuantity || 0
+  const repair = form.monthRepair || 0
+  if (form.unitPriceWithTax != null) {
+    return (form.unitPriceWithTax * (delivery - repair) / 1.13).toFixed(2)
+  }
+  return null
+})
 
 const rules = {
   statDate: [{ required: true, message: '请选择统计日期', trigger: 'change' }],

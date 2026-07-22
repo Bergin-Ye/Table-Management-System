@@ -57,6 +57,7 @@
       <el-table-column prop="confirmer" label="确认人" width="80" />
       <!-- 故障 -->
       <el-table-column prop="faultPhenomenon" label="故障现象" width="130" show-overflow-tooltip />
+      <el-table-column prop="faultDescription" label="维修描述" width="130" show-overflow-tooltip />
       <!-- 物料 -->
       <el-table-column prop="materialCode" label="料号" width="115" sortable="custom" />
       <el-table-column prop="partName" label="配件" width="100" show-overflow-tooltip />
